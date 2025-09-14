@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>運費計算器</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 40px; }
@@ -26,27 +26,33 @@
 
 <script>
 function calculate() {
-  const length = parseFloat(document.getElementById('length').value) || 0;
-  const width  = parseFloat(document.getElementById('width').value)  || 0;
-  const height = parseFloat(document.getElementById('height').value) || 0;
+  const lengthCm = parseFloat(document.getElementById('length').value) || 0;
+  const widthCm  = parseFloat(document.getElementById('width').value)  || 0;
+  const heightCm = parseFloat(document.getElementById('height').value) || 0;
   const weightKg = parseFloat(document.getElementById('weight').value) || 0;
 
-  // 材積重(磅) = ceil((cm^3 / 139))
-  const volumetricLb = Math.ceil((length * width * height) / 139);
+  // 先轉換為英寸並無條件進位
+  const lengthIn = Math.ceil(lengthCm / 2.54);
+  const widthIn  = Math.ceil(widthCm  / 2.54);
+  const heightIn = Math.ceil(heightCm / 2.54);
 
-  // 實際重(磅) = ceil(公斤 / 0.454)
+  // 材積重(磅) = ceil(英寸長 × 英寸寬 × 英寸高 ÷ 139)
+  const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
+
+  // 實際重(磅) = ceil(公斤 ÷ 0.454)
   const actualLb = Math.ceil(weightKg / 0.454);
 
   // 取較大值
   const chargeableLb = Math.max(volumetricLb, actualLb);
 
-  // 單價 = 3.99*0.75 + 1*0.075
+  // 單價
   const rate = 3.99 * 0.75 + 1 * 0.075;
 
   // 應付金額
   const total = (chargeableLb * rate).toFixed(2);
 
   document.getElementById('output').innerHTML = `
+    轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
     材積重：${volumetricLb} 磅<br>
     實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
