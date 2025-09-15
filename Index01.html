@@ -46,17 +46,20 @@ async function calculate() {
   // 台幣計算
   let twdTotal = 'N/A';
   let customRateDisplay = 'N/A';
+  const today = new Date().toLocaleDateString(); // 今天日期
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbw5njnMQ5dqmAAkIgxTOLg-hpznPcMe8BPSFGezpC8HxKhb0XIGwaHpaPDVoy9BBTp7YA/exec');
+    const res = await fetch('https://script.google.com/macros/s/AKfycbx5r07YWfe5V9xj8Eh1sFrJZMpdH56Gqcnbuwm6jv1FiavDf6cETmmigDDrt8sDUuuaug/exec');
     const data = await res.json();
     console.log('GAS 回傳：', data);
 
     const usdSell = parseFloat(data.usdCashSell);
     if (!isNaN(usdSell)) {
       const customRate = usdSell + 0.5;
-      customRateDisplay = customRate.toFixed(2);
-      twdTotal = (parseFloat(usdTotal) * customRate).toFixed(0);
+      // 顯示到小數點第三位
+      customRateDisplay = customRate.toFixed(3);
+      // 台幣金額無條件進位
+      twdTotal = Math.ceil(parseFloat(usdTotal) * customRate);
     } else {
       console.error('匯率資料無效', data);
     }
@@ -71,11 +74,11 @@ async function calculate() {
     實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
     應付金額：$${usdTotal} 美元<br>
-    使用匯率：1 USD = NT$${customRateDisplay}
+    台幣金額：約 NT$${twdTotal} 元<br>
+    使用匯率：1 USD = NT$${customRateDisplay}<br>
+    今日日期：${today}
   `;
 }
 </script>
 </body>
 </html>
-
-
