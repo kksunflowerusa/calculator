@@ -41,7 +41,7 @@ async function calculate() {
   const chargeableLb = Math.max(volumetricLb, actualLb);
 
   // 美金金額
-  const usdTotal = (chargeableLb * (3.99 * 0.75 + 1 * 0.075)).toFixed(2);
+  const usdTotal = (chargeableLb * (3.99 * 0.75 + 1 * 0.75)).toFixed(2);
 
   // 台幣計算
   let twdTotal = 'N/A';
@@ -82,4 +82,5 @@ async function calculate() {
 </script>
 </body>
 </html>
+
 
