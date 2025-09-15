@@ -1,73 +1,71 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>運費計算器</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 40px; }
-    label { display: block; margin-top: 10px; }
-    input { width: 100px; padding: 4px; }
-    button { margin-top: 15px; padding: 8px 16px; }
-    .result { margin-top: 20px; font-size: 1.2em; color: #333; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>運費計算器</title>
+<style>
+  body {font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; padding: 20px;}
+  label {display:block; margin-top:10px;}
+  input {margin-top:5px; padding:5px; width:100%;}
+  button {margin-top:15px; padding:8px 15px;}
+  #output {margin-top:20px; padding:10px; border:1px solid #ccc; background:#f9f9f9;}
+</style>
 </head>
 <body>
-  <h2>運費計算器</h2>
+<h2>運費計算器</h2>
 
-  <label>長 (公分): <input type="number" id="length" min="0" step="0.01"></label>
-  <label>寬 (公分): <input type="number" id="width"  min="0" step="0.01"></label>
-  <label>高 (公分): <input type="number" id="height" min="0" step="0.01"></label>
-  <label>重量 (公斤): <input type="number" id="weight" min="0" step="0.01"></label>
+<label>長 (公分)：<input type="number" id="length" step="0.01"></label>
+<label>寬 (公分)：<input type="number" id="width" step="0.01"></label>
+<label>高 (公分)：<input type="number" id="height" step="0.01"></label>
+<label>重量 (公斤)：<input type="number" id="weight" step="0.01"></label>
+<button onclick="calculate()">計算金額</button>
 
-  <button onclick="calculate()">計算金額</button>
-
-  <div class="result" id="output"></div>
+<div id="output"></div>
 
 <script>
 async function calculate() {
-  // 取得輸入值
-  let lengthCm = parseFloat(document.getElementById('length').value) || 0;
-  let widthCm  = parseFloat(document.getElementById('width').value)  || 0;
-  let heightCm = parseFloat(document.getElementById('height').value) || 0;
+  const lengthCm = parseFloat(document.getElementById('length').value) || 0;
+  const widthCm  = parseFloat(document.getElementById('width').value)  || 0;
+  const heightCm = parseFloat(document.getElementById('height').value) || 0;
   const weightKg = parseFloat(document.getElementById('weight').value) || 0;
 
-  // 1️⃣ 公分先無條件進位
-  lengthCm = Math.ceil(lengthCm);
-  widthCm  = Math.ceil(widthCm);
-  heightCm = Math.ceil(heightCm);
-
-  // 2️⃣ 轉英吋再無條件進位
+  // 1️⃣ 先將每個輸入公分無條件進位後轉成英吋
   const lengthIn = Math.ceil(lengthCm / 2.54);
   const widthIn  = Math.ceil(widthCm  / 2.54);
   const heightIn = Math.ceil(heightCm / 2.54);
 
-  // 3️⃣ 計算材積重與實際重 (磅)
+  // 2️⃣ 材積重 (磅)
   const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
+
+  // 3️⃣ 實際重 (磅)
   const actualLb = Math.ceil(weightKg / 0.454);
+
+  // 4️⃣ 取大者
   const chargeableLb = Math.max(volumetricLb, actualLb);
 
-  // 4️⃣ 美金總額
-  const rate = 3.99 * 0.75 + 1 * 0.075;
-  const usdTotal = (chargeableLb * rate).toFixed(2);
+  // 5️⃣ 美元金額
+  const usdTotal = (chargeableLb * (3.99 * 0.75 + 1 * 0.075)).toFixed(2);
 
-  // 5️⃣ 台銀匯率 +0.5
+  // 6️⃣ 從 Google Apps Script 取得台銀匯率
   let twdTotal = 'N/A';
   let customRateDisplay = 'N/A';
+
   try {
-    const res = await fetch('https://rate.bot.com.tw/xrt/fljson/0/day');
+    // ★★★ 這裡填入你部署的 GAS 網址 ★★★
+    const res = await fetch('https://script.google.com/macros/s/AKfycbyKFmwaHAtvBCVwRtpsJnLlkj2ZbOATQglFpq0U-nyPOiGQ9Iz_PAvHYgyx8i__7ZC7_A/exec');
     const data = await res.json();
-    const usdSell = parseFloat(data.USD.Exrate);   // 即期賣出價
-    const customRate = usdSell + 0.5;              // 加 0.5 元
+    const usdSell = parseFloat(data.usdSell);
+    const customRate = usdSell + 0.5;
     customRateDisplay = customRate.toFixed(2);
-    twdTotal = (usdTotal * customRate).toFixed(0);
+    twdTotal = (parseFloat(usdTotal) * customRate).toFixed(0);
   } catch (err) {
     console.error('台銀匯率取得失敗：', err);
   }
 
-  // 6️⃣ 顯示結果
+  // 7️⃣ 顯示結果
   document.getElementById('output').innerHTML = `
-    轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸 (原始輸入已進位成整數公分)<br>
+    轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
     材積重：${volumetricLb} 磅<br>
     實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
