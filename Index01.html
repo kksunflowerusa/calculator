@@ -25,38 +25,56 @@
   <div class="result" id="output"></div>
 
 <script>
-function calculate() {
-  const lengthCm = parseFloat(document.getElementById('length').value) || 0;
-  const widthCm  = parseFloat(document.getElementById('width').value)  || 0;
-  const heightCm = parseFloat(document.getElementById('height').value) || 0;
+async function calculate() {
+  // 取得輸入值
+  let lengthCm = parseFloat(document.getElementById('length').value) || 0;
+  let widthCm  = parseFloat(document.getElementById('width').value)  || 0;
+  let heightCm = parseFloat(document.getElementById('height').value) || 0;
   const weightKg = parseFloat(document.getElementById('weight').value) || 0;
 
-  // 先轉換為英寸並無條件進位
+  // 1️⃣ 先無條件進位成整數公分
+  lengthCm = Math.ceil(lengthCm);
+  widthCm  = Math.ceil(widthCm);
+  heightCm = Math.ceil(heightCm);
+
+  // 2️⃣ 再轉換成英吋並無條件進位
   const lengthIn = Math.ceil(lengthCm / 2.54);
   const widthIn  = Math.ceil(widthCm  / 2.54);
   const heightIn = Math.ceil(heightCm / 2.54);
 
-  // 材積重(磅) = ceil(英寸長 × 英寸寬 × 英寸高 ÷ 139)
+  // 材積重 = ceil(長×寬×高 ÷ 139)
   const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
 
-  // 實際重(磅) = ceil(公斤 ÷ 0.454)
+  // 實際重 = ceil(公斤 ÷ 0.454)
   const actualLb = Math.ceil(weightKg / 0.454);
 
-  // 取較大值
+  // 計費重量
   const chargeableLb = Math.max(volumetricLb, actualLb);
 
-  // 單價
+  // 運費單價
   const rate = 3.99 * 0.75 + 1 * 0.075;
+  const usdTotal = (chargeableLb * rate).toFixed(2);
 
-  // 應付金額
-  const total = (chargeableLb * rate).toFixed(2);
+  // 3️⃣ 抓台灣銀行即期匯率 +0.5
+  let twdTotal = 'N/A';
+  try {
+    const res = await fetch('https://rate.bot.com.tw/xrt/fljson/0/day');
+    const data = await res.json();
+    const usdSell = parseFloat(data.USD.Exrate);   // 即期賣出價
+    const customRate = usdSell + 0.5;              // 加 0.5 元
+    twdTotal = (usdTotal * customRate).toFixed(0);
+  } catch (err) {
+    console.error('台銀匯率取得失敗：', err);
+  }
 
+  // 4️⃣ 顯示結果
   document.getElementById('output').innerHTML = `
-    轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
+    轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸 (原始輸入已進位成整數公分)<br>
     材積重：${volumetricLb} 磅<br>
     實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
-    應付金額：$${total} (美元)
+    應付金額：$${usdTotal} 美元<br>
+    依台銀即期賣出價 +0.5 匯率：約 NT$${twdTotal} 元
   `;
 }
 </script>
