@@ -48,7 +48,7 @@ async function calculate() {
   let customRateDisplay = 'N/A';
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbxLwq6zmypPbVZSV36ajOUEv1wornJc-_t-uP0q-ACMmkeZZODiz_Hmk_ZMyNvhrF7qDw/exec');
+    const res = await fetch('https://script.google.com/macros/s/AKfycbw5njnMQ5dqmAAkIgxTOLg-hpznPcMe8BPSFGezpC8HxKhb0XIGwaHpaPDVoy9BBTp7YA/exec');
     const data = await res.json();
     console.log('GAS 回傳：', data);
 
@@ -71,11 +71,11 @@ async function calculate() {
     實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
     應付金額：$${usdTotal} 美元<br>
-    依台銀現金本行賣出 +0.5 匯率：約 NT$${twdTotal} 元<br>
     使用匯率：1 USD = NT$${customRateDisplay}
   `;
 }
 </script>
 </body>
 </html>
+
 
