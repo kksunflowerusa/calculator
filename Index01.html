@@ -49,7 +49,7 @@ async function calculate() {
   const today = new Date().toLocaleDateString();
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbziiKO5GGJTeGaRyPDZH-HUvcfOtlSsG93CowgpjkvAJes5QhxikqvkjgsiViDvs3Rq/exec'); // ←換成您部署的 Apps Script URL
+    const res = await fetch('https://script.google.com/macros/s/AKfycbwIXrYJFsn79jgdIwTVwlg-rb7_i2zYBipXQu4MS27kIvsNOu-NNBaa_d9pHxw7768L/exec'); // ←換成您部署的 Apps Script URL
     const data = await res.json();
     console.log('GAS 回傳：', data);
 
@@ -80,3 +80,4 @@ async function calculate() {
 </script>
 </body>
 </html>
+
