@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>運費計算器</title>
+<title>B2運費計算器</title>
 <style>
   body {font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; padding: 20px;}
   label {display:block; margin-top:10px;}
@@ -13,7 +13,7 @@
 </style>
 </head>
 <body>
-<h2>運費計算器</h2>
+<h2>B2運費計算器</h2>
 
 <label>長 (公分)：<input type="number" id="length" step="0.01"></label>
 <label>寬 (公分)：<input type="number" id="width" step="0.01"></label>
@@ -40,28 +40,26 @@ async function calculate() {
   const actualLb = Math.ceil(weightKg / 0.454);
   const chargeableLb = Math.max(volumetricLb, actualLb);
 
-  // 美金金額
-  const usdTotal = (chargeableLb * (3.99 * 0.75 + 1 * 0.75)).toFixed(2);
+  // 美金金額計算 (可依需求修改公式)
+  const usdTotal = (chargeableLb * (3.99 * 0.8 + 1 * 0.75)).toFixed(2);
 
-  // 台幣計算
+  // 取得昨收匯率 + 0.8
   let twdTotal = 'N/A';
   let customRateDisplay = 'N/A';
-  const today = new Date().toLocaleDateString(); // 今天日期
+  const today = new Date().toLocaleDateString();
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbx5r07YWfe5V9xj8Eh1sFrJZMpdH56Gqcnbuwm6jv1FiavDf6cETmmigDDrt8sDUuuaug/exec');
+    const res = await fetch('https://script.google.com/macros/s/AKfycbziiKO5GGJTeGaRyPDZH-HUvcfOtlSsG93CowgpjkvAJes5QhxikqvkjgsiViDvs3Rq/exec'); // ←換成您部署的 Apps Script URL
     const data = await res.json();
     console.log('GAS 回傳：', data);
 
-    const usdSell = parseFloat(data.usdCashSell);
-    if (!isNaN(usdSell)) {
-      const customRate = usdSell + 0.5;
-      // 顯示到小數點第三位
+    const usdClose = parseFloat(data.usdClose);
+    if (!isNaN(usdClose)) {
+      const customRate = usdClose + 0.8; // 昨收 + 0.8
       customRateDisplay = customRate.toFixed(3);
-      // 台幣金額無條件進位
       twdTotal = Math.ceil(parseFloat(usdTotal) * customRate);
     } else {
-      console.error('匯率資料無效', data);
+      console.error('無法取得昨收匯率', data);
     }
   } catch (err) {
     console.error('fetch 匯率錯誤', err);
@@ -73,7 +71,7 @@ async function calculate() {
     材積重：${volumetricLb} 磅<br>
     實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
-    應付金額：$${usdTotal} 美元<br>
+    運費金額：$${usdTotal} 美元<br>
     台幣金額：約 NT$${twdTotal} 元<br>
     使用匯率：1 USD = NT$${customRateDisplay}<br>
     今日日期：${today}
@@ -82,5 +80,3 @@ async function calculate() {
 </script>
 </body>
 </html>
-
-
