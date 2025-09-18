@@ -55,43 +55,43 @@ async function calculate() {
   const widthIn  = Math.ceil(widthCm  / 2.54);
   const heightIn = Math.ceil(heightCm / 2.54);
 
-  // 材積重
   const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
 
-  // 計算各件重量
-  let totalActualLb = 0;          // 用於計費(每件進位)
-  let extraLowWeightFee = 0;      // 單件低於1磅的額外費用
+  let totalActualLb = 0;
+  let extraLowWeightFee = 0;
+  let detailList = "";
+
   for (let i = 1; i <= pieces; i++) {
-    const kg = parseFloat(document.getElementById(`weight_${i}`).value) || 0;
-    const lbExact = kg / 0.454;         // 不進位的實際磅
-    const lbForCharge = Math.ceil(lbExact); // 計費磅數
+    const kgRaw = document.getElementById(`weight_${i}`).value;
+    const kg = parseFloat(kgRaw);
+    if (!Number.isFinite(kg) || kg < 0) continue; // 忽略空值或負值
+
+    const lbExact = kg / 0.454;             // 未進位磅
+    const lbForCharge = Math.ceil(lbExact); // 計費磅
     totalActualLb += lbForCharge;
 
-    // 判斷是否低於 1 磅 (使用未進位值)
+    // 判斷是否低於 1 磅
     if (lbExact < 1) {
       extraLowWeightFee += 5;
     }
+
+    detailList += `第${i}件：${lbExact.toFixed(2)} 磅 (計費 ${lbForCharge} 磅)<br>`;
   }
 
-  // 計費重量
   const chargeableLb = Math.max(volumetricLb, totalActualLb);
 
-  // 基本運費
-  let usdTotal = chargeableLb * (3.99 * 1 + 1 * 0.8);
-
-  // 計費重量附加費
+  let usdTotal = chargeableLb * (3.99 + 0.8);
   if (chargeableLb >= 1 && chargeableLb <= 10) {
     usdTotal += 12;
   } else if (chargeableLb >= 11 && chargeableLb <= 20) {
     usdTotal += 6;
   }
 
-  // 加上低於1磅附加費
+  // 加上低於1磅的附加費
   usdTotal += extraLowWeightFee;
 
   usdTotal = usdTotal.toFixed(2);
 
-  // 台幣換算
   let twdTotal = 'N/A';
   let customRateDisplay = 'N/A';
   const today = new Date().toLocaleDateString();
@@ -112,7 +112,8 @@ async function calculate() {
   document.getElementById('output').innerHTML = `
     轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
     材積重：${volumetricLb} 磅<br>
-    所有件合計實際重：${totalActualLb} 磅<br>
+    各件重量：<br>${detailList}
+    合計計費實際重：${totalActualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
     單件低於1磅加收：$${extraLowWeightFee} 美元<br>
     運費金額：$${usdTotal} 美元<br>
