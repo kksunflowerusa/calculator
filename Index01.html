@@ -3,243 +3,124 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>運費計算器（含匯率容錯）</title>
+<title>運費計算器</title>
 <style>
-  body {font-family: Arial, sans-serif; max-width: 700px; margin: 30px auto; padding: 20px;}
+  body {font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; padding: 20px;}
   label {display:block; margin-top:10px;}
-  input[type="number"], input[type="text"] {margin-top:5px; padding:6px; width:100%;}
+  input {margin-top:5px; padding:5px; width:100%;}
   button {margin-top:15px; padding:8px 15px;}
   #output {margin-top:20px; padding:10px; border:1px solid #ccc; background:#f9f9f9;}
-  #debug {margin-top:12px; padding:8px; border:1px dashed #888; background:#fff;}
-  .small {font-size:0.9rem; color:#555;}
+  #innerBoxes div {margin-top:8px;}
 </style>
 </head>
 <body>
-<h2>B5運費計算器（含匯率容錯 & 手動備援）</h2>
+<h2>B5運費計算器</h2>
 
 <!-- 外箱資訊 -->
 <label>長 (公分)：<input type="number" id="length" step="0.01"></label>
 <label>寬 (公分)：<input type="number" id="width" step="0.01"></label>
 <label>高 (公分)：<input type="number" id="height" step="0.01"></label>
-<label>外箱重量 (公斤)：<input type="number" id="weight" step="0.01"></label>
+<label>重量 (公斤)：<input type="number" id="weight" step="0.01"></label>
 
-<!-- 內箱件數與動態欄位 -->
+<!-- 內箱件數 -->
 <label>內箱件數：
-  <input type="number" id="innerCount" step="1" min="0" value="0" oninput="renderInnerBoxes()">
+  <input type="number" id="innerCount" step="1" min="0" oninput="renderInnerBoxes()">
 </label>
-<div id="innerBoxes"></div>
 
-<!-- 匯率備援 -->
-<label>手動匯率（若自動抓取失敗可在此填入，格式：32.100）：<input type="number" id="manualRate" step="0.001" placeholder="例如 32.100"></label>
-<label><input type="checkbox" id="forceManual"> 強制使用手動匯率（勾選則忽略自動抓取）</label>
+<!-- 動態產生每件重量輸入欄位 -->
+<div id="innerBoxes"></div>
 
 <button onclick="calculate()">計算金額</button>
 
 <div id="output"></div>
 
-<!-- 除錯資訊（方便看 fetch 回傳） -->
-<div id="debug" class="small" style="display:none;"></div>
-
 <script>
-// 產生內箱輸入欄
+// 依件數動態生成輸入欄位
 function renderInnerBoxes() {
   const count = parseInt(document.getElementById('innerCount').value) || 0;
   const container = document.getElementById('innerBoxes');
   container.innerHTML = '';
   for (let i = 1; i <= count; i++) {
     const div = document.createElement('div');
-    div.innerHTML = `內箱第 ${i} 件重量 (公斤)：<input type="number" step="0.01" id="innerWeight${i}" placeholder="公斤">`;
+    div.innerHTML = `內箱第 ${i} 件重量 (公斤)：<input type="number" step="0.01" id="innerWeight${i}">`;
     container.appendChild(div);
   }
 }
 
-// 嘗試從各種可能的資料格式中找匯率
-function findRateInObj(obj) {
-  if (obj == null) return null;
-  // 常見 key 名稱候選
-  const candidates = ['usdCashSell','usdSell','cashSell','sell','rate','exchangeRate','usd_to_twd','usdToTwd','USDTWD','TWD'];
-  // 直接檢查候選欄位（不區分大小寫）
-  for (const key of Object.keys(obj)) {
-    const lower = key.toLowerCase();
-    for (const c of candidates) {
-      if (lower === c.toLowerCase() && obj[key] != null) {
-        const n = parseFloat(obj[key]);
-        if (Number.isFinite(n) && n > 0) return n;
-      }
-    }
-  }
-  // 若有 rates.TWD 或類似結構
-  if (obj.rates && (obj.rates.TWD || obj.rates.TW || obj.rates['TWD'])) {
-    const n = parseFloat(obj.rates.TWD || obj.rates.TW || obj.rates['TWD']);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  // 若有直接 TWD 欄位
-  if (obj.TWD) {
-    const n = parseFloat(obj.TWD);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-  // 遞迴尋找第一個合理的數字（範圍 1~200 認為是可能的匯率）
-  function recursiveSearch(o, depth=0) {
-    if (depth > 6 || o == null) return null;
-    if (typeof o === 'number') {
-      if (Number.isFinite(o) && o > 1 && o < 200) return o;
-      return null;
-    }
-    if (typeof o === 'string') {
-      const v = parseFloat(o);
-      if (Number.isFinite(v) && v > 1 && v < 200) return v;
-      return null;
-    }
-    if (Array.isArray(o)) {
-      for (const el of o) {
-        const r = recursiveSearch(el, depth+1);
-        if (r) return r;
-      }
-    } else if (typeof o === 'object') {
-      for (const k of Object.keys(o)) {
-        const r = recursiveSearch(o[k], depth+1);
-        if (r) return r;
-      }
-    }
-    return null;
-  }
-  return recursiveSearch(obj, 0);
-}
-
 async function calculate() {
-  const debugEl = document.getElementById('debug');
-  debugEl.style.display = 'none';
-  debugEl.innerHTML = '';
-
   const lengthCm = parseFloat(document.getElementById('length').value) || 0;
   const widthCm  = parseFloat(document.getElementById('width').value)  || 0;
   const heightCm = parseFloat(document.getElementById('height').value) || 0;
   const weightKg = parseFloat(document.getElementById('weight').value) || 0;
 
-  // 尺寸轉英吋 (無條件進位)
+  // 無條件進位轉英吋
   const lengthIn = Math.ceil(lengthCm / 2.54);
   const widthIn  = Math.ceil(widthCm  / 2.54);
   const heightIn = Math.ceil(heightCm / 2.54);
 
-  // 材積重與實際重（外箱）
+  // 材積重與實際重
   const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
   const actualLb = Math.ceil(weightKg / 0.454);
   const chargeableLb = Math.max(volumetricLb, actualLb);
 
-  // 基本運費計算
+  // 基本運費
   let usdTotal = chargeableLb * (3.99 + 0.8);
+
+  // 額外加費依計費重量
   if (chargeableLb >= 1 && chargeableLb <= 10) {
     usdTotal += 12;
   } else if (chargeableLb >= 11 && chargeableLb <= 20) {
     usdTotal += 6;
   }
 
-  // 內箱小於1磅加收
+  // ===== 內箱計算 (小於1磅加收) =====
   const innerCount = parseInt(document.getElementById('innerCount').value) || 0;
   let underOneLbCount = 0;
-  let innerDetails = '';
+
   for (let i = 1; i <= innerCount; i++) {
-    const kg = parseFloat(document.getElementById(`innerWeight${i}`)?.value) || 0;
-    const lbExact = kg / 0.454;
-    innerDetails += `第${i}件 ${kg} kg = ${lbExact.toFixed(3)} lb<br>`;
-    if (lbExact < 1) underOneLbCount++;
+    const kg = parseFloat(document.getElementById(`innerWeight${i}`).value) || 0;
+    const lb = kg / 0.454; // 換算磅
+    if (lb < 1) underOneLbCount++;
   }
+  // 每件小於1磅加收 $5
   usdTotal += underOneLbCount * 5;
 
-  // 先把 usdTotal 轉成數字（方便計算）
-  const usdTotalFloat = parseFloat(usdTotal);
+  usdTotal = usdTotal.toFixed(2);
 
-  // 匯率抓取：可強制使用手動匯率
-  const forceManual = document.getElementById('forceManual').checked;
-  const manualRate = parseFloat(document.getElementById('manualRate').value);
-
-  let customRate = null;
-  let debugMsg = '';
-
-  if (forceManual && Number.isFinite(manualRate) && manualRate > 0) {
-    customRate = manualRate;
-    debugMsg = '使用者勾選「強制使用手動匯率」：使用手動匯率 ' + customRate;
-  } else {
-    // 嘗試自動抓取
-    const url = 'https://script.google.com/macros/s/AKfycbwIXrYJFsn79jgdIwTVwlg-rb7_i2zYBipXQu4MS27kIvsNOu-NNBaa_d9pHxw7768L/exec';
-    try {
-      const res = await fetch(url, { cache: 'no-cache' });
-      const statusLine = `HTTP ${res.status} ${res.statusText}`;
-      // 先嘗試 parse JSON
-      let respText = null;
-      try {
-        const json = await res.json();
-        debugMsg += `自動抓取成功（JSON 解析） — ${statusLine}<br>`;
-        debugMsg += `回傳 JSON（前 800 字）: <pre>${JSON.stringify(json).slice(0,800)}</pre><br>`;
-        // 從 json 找匯率
-        const found = findRateInObj(json);
-        if (found) {
-          customRate = found;
-          debugMsg += `從 JSON 偵測到匯率: ${customRate}（使用）<br>`;
-        } else {
-          debugMsg += `JSON 中未偵測到合理匯率欄位。<br>`;
-        }
-      } catch (errJson) {
-        // 不是 JSON，改讀文字，再嘗試從文字中抓數字
-        respText = await res.text();
-        debugMsg += `自動抓取成功（非 JSON） — ${statusLine}<br>`;
-        debugMsg += `回傳文字（前 800 字）: <pre>${respText.slice(0,800)}</pre><br>`;
-        // 從文字中找第一個可能的匯率數字（1~200 範圍）
-        const matches = respText.match(/([0-9]+(?:\.[0-9]+)?)/g);
-        if (matches && matches.length) {
-          for (const m of matches) {
-            const v = parseFloat(m);
-            if (Number.isFinite(v) && v > 1 && v < 200) {
-              customRate = v;
-              debugMsg += `從文字中擷取到可能匯率: ${customRate}（使用）<br>`;
-              break;
-            }
-          }
-        }
-        if (!customRate) debugMsg += '文字中未偵測到合理匯率數字。<br>';
-      }
-    } catch (err) {
-      debugMsg += `自動抓取失敗（fetch error）：${err.message}<br>`;
-    }
-
-    // 如果自動抓不到，但使用者手動有填，使用手動（作為 fallback）
-    if (!Number.isFinite(customRate) && Number.isFinite(manualRate) && manualRate > 0) {
-      customRate = manualRate;
-      debugMsg += `自動抓取失敗或未找到匯率，改用手動匯率：${customRate}<br>`;
-    }
-  }
-
-  // 計算台幣：若 customRate 存在則用 (customRate + 0.8) 的顯示邏輯（維持原本規則）
-  let customRateDisplay = 'N/A';
+  // 台幣計算
   let twdTotal = 'N/A';
-  if (Number.isFinite(customRate) && customRate > 0) {
-    const finalRate = parseFloat(customRate) + 0.8; // 舊有邏輯：usdSell + 0.8
-    customRateDisplay = finalRate.toFixed(3);
-    twdTotal = Math.ceil(usdTotalFloat * finalRate);
-  } else {
-    debugMsg += '未取得匯率（自動與手動皆無），台幣顯示為 N/A。請檢查 Web App 回傳或填入手動匯率。<br>';
+  let customRateDisplay = 'N/A';
+  const today = new Date().toLocaleDateString();
+
+  try {
+    const res = await fetch('https://script.google.com/macros/s/AKfycbzsuRiKBiw46nivXXU8Z2XFL-0jIJtfxKDULWTZI_yc1eIzmLTNPCgFwxFzc94rXt7g/exec');
+    const data = await res.json();
+    console.log('GAS 回傳：', data);
+
+    const usdSell = parseFloat(data.usdCashSell);
+    if (!isNaN(usdSell)) {
+      const customRate = usdSell + 0.8;
+      customRateDisplay = customRate.toFixed(3);
+      twdTotal = Math.ceil(parseFloat(usdTotal) * customRate);
+    } else {
+      console.error('匯率資料無效', data);
+    }
+  } catch (err) {
+    console.error('fetch 匯率錯誤', err);
   }
 
   // 顯示結果
-  const out = document.getElementById('output');
-  out.innerHTML = `
+  document.getElementById('output').innerHTML = `
     轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
     材積重：${volumetricLb} 磅<br>
-    外箱實際重（計費進位）：${actualLb} 磅<br>
+    實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
-    <hr>
-    內箱細節：<br>${innerDetails}
     小於1磅的內箱件數：${underOneLbCount} 件<br>
-    <hr>
-    單位運費小計（美元）：$${usdTotalFloat.toFixed(2)}<br>
-    台幣金額：約 NT$${twdTotal}<br>
-    使用匯率（顯示 = 自動或手動抓到的匯率 + 0.8）：1 USD = NT$${customRateDisplay}<br>
-    今日日期：${new Date().toLocaleDateString()}<br>
+    運費金額：$${usdTotal} 美元<br>
+    台幣金額：約 NT$${twdTotal} 元<br>
+    使用匯率：1 USD = NT$${customRateDisplay}<br>
+    今日日期：${today}
   `;
-
-  // 顯示 debug 訊息（方便檢查為何抓不到）
-  debugEl.style.display = 'block';
-  debugEl.innerHTML = `<strong>除錯資訊：</strong><br>${debugMsg}`;
 }
 </script>
 </body>
