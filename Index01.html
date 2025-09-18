@@ -30,7 +30,6 @@
 <div id="output"></div>
 
 <script>
-// 初始載入時建立第一件
 document.addEventListener('DOMContentLoaded', generatePieceInputs);
 
 function generatePieceInputs() {
@@ -51,7 +50,7 @@ async function calculate() {
   const heightCm = parseFloat(document.getElementById('height').value) || 0;
   const pieces   = parseInt(document.getElementById('pieces').value)   || 0;
 
-  // 無條件進位轉英吋
+  // 尺寸轉英吋 (無條件進位)
   const lengthIn = Math.ceil(lengthCm / 2.54);
   const widthIn  = Math.ceil(widthCm  / 2.54);
   const heightIn = Math.ceil(heightCm / 2.54);
@@ -59,43 +58,46 @@ async function calculate() {
   // 材積重
   const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
 
-  // 每件實際重量磅
-  let totalActualLb = 0;
-  let extraLowWeightFee = 0;
+  // 計算各件重量
+  let totalActualLb = 0;          // 用於計費(每件進位)
+  let extraLowWeightFee = 0;      // 單件低於1磅的額外費用
   for (let i = 1; i <= pieces; i++) {
     const kg = parseFloat(document.getElementById(`weight_${i}`).value) || 0;
-    const lb = Math.ceil(kg / 0.454);
-    totalActualLb += lb;
-    if (lb < 1) { // 單件低於 1 磅
+    const lbExact = kg / 0.454;         // 不進位的實際磅
+    const lbForCharge = Math.ceil(lbExact); // 計費磅數
+    totalActualLb += lbForCharge;
+
+    // 判斷是否低於 1 磅 (使用未進位值)
+    if (lbExact < 1) {
       extraLowWeightFee += 5;
     }
   }
 
-  // 計費重量 = max(材積重, 所有件合計實際重)
+  // 計費重量
   const chargeableLb = Math.max(volumetricLb, totalActualLb);
 
-  // 運費公式
+  // 基本運費
   let usdTotal = chargeableLb * (3.99 * 1 + 1 * 0.8);
 
-  // 額外加費依計費重量
+  // 計費重量附加費
   if (chargeableLb >= 1 && chargeableLb <= 10) {
     usdTotal += 12;
   } else if (chargeableLb >= 11 && chargeableLb <= 20) {
     usdTotal += 6;
   }
 
-  // 單件低於 1 磅附加費
+  // 加上低於1磅附加費
   usdTotal += extraLowWeightFee;
 
   usdTotal = usdTotal.toFixed(2);
 
-  // 台幣計算
+  // 台幣換算
   let twdTotal = 'N/A';
   let customRateDisplay = 'N/A';
   const today = new Date().toLocaleDateString();
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbyy8j6OjKPzsY45hTuJpUBlJWiVNy-dBrJduFDU92PXNHSoJAbvakogwTi_UT5YlGZ8/exec');
+    const res = await fetch('https://script.google.com/macros/s/AKfycbwIXrYJFsn79jgdIwTVwlg-rb7_i2zYBipXQu4MS27kIvsNOu-NNBaa_d9pHxw7768L/exec');
     const data = await res.json();
     const usdSell = parseFloat(data.usdCashSell);
     if (!isNaN(usdSell)) {
@@ -122,4 +124,3 @@ async function calculate() {
 </script>
 </body>
 </html>
-
