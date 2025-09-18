@@ -3,97 +3,176 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>運費計算器</title>
+<title>運費計算器（自動匯率）</title>
 <style>
-  body {font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; padding: 20px;}
+  body {font-family: Arial, sans-serif; max-width: 700px; margin: 30px auto; padding: 20px;}
   label {display:block; margin-top:10px;}
-  input {margin-top:5px; padding:5px; width:100%;}
+  input[type="number"], input[type="text"] {margin-top:5px; padding:6px; width:100%;}
   button {margin-top:15px; padding:8px 15px;}
   #output {margin-top:20px; padding:10px; border:1px solid #ccc; background:#f9f9f9;}
-  #innerBoxes div {margin-top:8px;}
+  #debug {margin-top:12px; padding:8px; border:1px dashed #888; background:#fff;}
+  .small {font-size:0.9rem; color:#555;}
 </style>
 </head>
 <body>
-<h2>B5運費計算器</h2>
+<h2>B5運費計算器（自動匯率）</h2>
 
 <!-- 外箱資訊 -->
 <label>長 (公分)：<input type="number" id="length" step="0.01"></label>
 <label>寬 (公分)：<input type="number" id="width" step="0.01"></label>
 <label>高 (公分)：<input type="number" id="height" step="0.01"></label>
-<label>重量 (公斤)：<input type="number" id="weight" step="0.01"></label>
+<label>外箱重量 (公斤)：<input type="number" id="weight" step="0.01"></label>
 
-<!-- 內箱件數 -->
+<!-- 內箱件數與動態欄位 -->
 <label>內箱件數：
-  <input type="number" id="innerCount" step="1" min="0" oninput="renderInnerBoxes()">
+  <input type="number" id="innerCount" step="1" min="0" value="0" oninput="renderInnerBoxes()">
 </label>
-
-<!-- 動態產生每件重量輸入欄位 -->
 <div id="innerBoxes"></div>
 
 <button onclick="calculate()">計算金額</button>
 
 <div id="output"></div>
+<div id="debug" class="small" style="display:none;"></div>
 
 <script>
-// 依件數動態生成輸入欄位
+// 動態產生內箱重量欄位
 function renderInnerBoxes() {
   const count = parseInt(document.getElementById('innerCount').value) || 0;
   const container = document.getElementById('innerBoxes');
   container.innerHTML = '';
   for (let i = 1; i <= count; i++) {
     const div = document.createElement('div');
-    div.innerHTML = `內箱第 ${i} 件重量 (公斤)：<input type="number" step="0.01" id="innerWeight${i}">`;
+    div.innerHTML = `內箱第 ${i} 件重量 (公斤)：<input type="number" step="0.01" id="innerWeight${i}" placeholder="公斤">`;
     container.appendChild(div);
   }
 }
 
-function calculate() {
+// 嘗試從多種格式找匯率
+function findRateInObj(obj) {
+  if (!obj) return null;
+  const keys = ['usdCashSell','usdSell','cashSell','sell','rate','exchangeRate','usd_to_twd','usdToTwd','USDTWD','TWD'];
+  for (const k of Object.keys(obj)) {
+    const val = parseFloat(obj[k]);
+    if (keys.some(c => k.toLowerCase() === c.toLowerCase()) && Number.isFinite(val) && val > 1 && val < 200) return val;
+  }
+  if (obj.rates && obj.rates.TWD) {
+    const n = parseFloat(obj.rates.TWD);
+    if (Number.isFinite(n) && n > 1 && n < 200) return n;
+  }
+  if (obj.TWD) {
+    const n = parseFloat(obj.TWD);
+    if (Number.isFinite(n) && n > 1 && n < 200) return n;
+  }
+  // 遞迴尋找可能的數字
+  function rec(o, d=0) {
+    if (d>6 || !o) return null;
+    if (typeof o==='number' && o>1 && o<200) return o;
+    if (typeof o==='string') {
+      const v = parseFloat(o);
+      if (v>1 && v<200) return v;
+    }
+    if (Array.isArray(o)) for (const el of o){const r=rec(el,d+1); if(r) return r;}
+    if (typeof o==='object') for (const k of Object.keys(o)){const r=rec(o[k],d+1); if(r) return r;}
+    return null;
+  }
+  return rec(obj);
+}
+
+async function calculate() {
+  const debugEl = document.getElementById('debug');
+  debugEl.style.display = 'none';
+  debugEl.innerHTML = '';
+
   const lengthCm = parseFloat(document.getElementById('length').value) || 0;
   const widthCm  = parseFloat(document.getElementById('width').value)  || 0;
   const heightCm = parseFloat(document.getElementById('height').value) || 0;
   const weightKg = parseFloat(document.getElementById('weight').value) || 0;
 
-  // 無條件進位轉英吋
+  // 英吋與材積重
   const lengthIn = Math.ceil(lengthCm / 2.54);
   const widthIn  = Math.ceil(widthCm  / 2.54);
   const heightIn = Math.ceil(heightCm / 2.54);
-
-  // 材積重與實際重
   const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
   const actualLb = Math.ceil(weightKg / 0.454);
   const chargeableLb = Math.max(volumetricLb, actualLb);
 
   // 基本運費
   let usdTotal = chargeableLb * (3.99 + 0.8);
+  if (chargeableLb >= 1 && chargeableLb <= 10) usdTotal += 12;
+  else if (chargeableLb >= 11 && chargeableLb <= 20) usdTotal += 6;
 
-  // 額外加費依計費重量
-  if (chargeableLb >= 1 && chargeableLb <= 10) {
-    usdTotal += 12;
-  } else if (chargeableLb >= 11 && chargeableLb <= 20) {
-    usdTotal += 6;
-  }
-
-  // 內箱計算 (小於1磅加收)
+  // 內箱小於1磅加收
   const innerCount = parseInt(document.getElementById('innerCount').value) || 0;
   let underOneLbCount = 0;
+  let innerDetails = '';
   for (let i = 1; i <= innerCount; i++) {
-    const kg = parseFloat(document.getElementById(`innerWeight${i}`).value) || 0;
+    const kg = parseFloat(document.getElementById(`innerWeight${i}`)?.value) || 0;
     const lb = kg / 0.454;
+    innerDetails += `第${i}件 ${kg} kg = ${lb.toFixed(3)} lb<br>`;
     if (lb < 1) underOneLbCount++;
   }
   usdTotal += underOneLbCount * 5;
 
-  // 顯示結果
-  const today = new Date().toLocaleDateString();
+  const usdTotalFloat = parseFloat(usdTotal);
+  let customRate = null;
+  let debugMsg = '';
+
+  // 自動抓取匯率
+  const url = 'https://script.google.com/macros/s/AKfycbwIXrYJFsn79jgdIwTVwlg-rb7_i2zYBipXQu4MS27kIvsNOu-NNBaa_d9pHxw7768L/exec';
+  try {
+    const res = await fetch(url, { cache: 'no-cache' });
+    const status = `HTTP ${res.status} ${res.statusText}`;
+    try {
+      const json = await res.json();
+      debugMsg += `自動抓取成功(JSON) — ${status}<br>`;
+      debugMsg += `回傳 JSON (前 800 字): <pre>${JSON.stringify(json).slice(0,800)}</pre><br>`;
+      const found = findRateInObj(json);
+      if (found) {
+        customRate = found;
+        debugMsg += `偵測到匯率: ${customRate}<br>`;
+      } else debugMsg += 'JSON 中未找到合理匯率<br>';
+    } catch {
+      const txt = await res.text();
+      debugMsg += `自動抓取成功(文字) — ${status}<br>`;
+      debugMsg += `回傳文字 (前 800 字): <pre>${txt.slice(0,800)}</pre><br>`;
+      const matches = txt.match(/([0-9]+(?:\.[0-9]+)?)/g);
+      if (matches) {
+        for (const m of matches) {
+          const v = parseFloat(m);
+          if (v>1 && v<200) { customRate = v; debugMsg += `擷取到匯率: ${customRate}<br>`; break; }
+        }
+      }
+    }
+  } catch (err) {
+    debugMsg += `自動抓取失敗：${err.message}<br>`;
+  }
+
+  let customRateDisplay = 'N/A';
+  let twdTotal = 'N/A';
+  if (Number.isFinite(customRate) && customRate > 0) {
+    const finalRate = customRate + 0.8;
+    customRateDisplay = finalRate.toFixed(3);
+    twdTotal = Math.ceil(usdTotalFloat * finalRate);
+  } else {
+    debugMsg += '未取得匯率，台幣顯示為 N/A<br>';
+  }
+
   document.getElementById('output').innerHTML = `
     轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
     材積重：${volumetricLb} 磅<br>
-    實際重：${actualLb} 磅<br>
+    外箱實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
+    <hr>
+    內箱細節：<br>${innerDetails}
     小於1磅的內箱件數：${underOneLbCount} 件<br>
-    運費金額：$${usdTotal.toFixed(2)} 美元<br>
-    今日日期：${today}
+    <hr>
+    運費金額：$${usdTotalFloat.toFixed(2)} 美元<br>
+    台幣金額：約 NT$${twdTotal}<br>
+    使用匯率：1 USD = NT$${customRateDisplay}<br>
+    今日日期：${new Date().toLocaleDateString()}<br>
   `;
+  debugEl.style.display = 'block';
+  debugEl.innerHTML = `<strong>除錯資訊：</strong><br>${debugMsg}`;
 }
 </script>
 </body>
