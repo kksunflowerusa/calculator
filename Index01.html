@@ -47,7 +47,7 @@ function renderInnerBoxes() {
   }
 }
 
-async function calculate() {
+function calculate() {
   const lengthCm = parseFloat(document.getElementById('length').value) || 0;
   const widthCm  = parseFloat(document.getElementById('width').value)  || 0;
   const heightCm = parseFloat(document.getElementById('height').value) || 0;
@@ -73,52 +73,25 @@ async function calculate() {
     usdTotal += 6;
   }
 
-  // ===== 內箱計算 (小於1磅加收) =====
+  // 內箱計算 (小於1磅加收)
   const innerCount = parseInt(document.getElementById('innerCount').value) || 0;
   let underOneLbCount = 0;
-
   for (let i = 1; i <= innerCount; i++) {
     const kg = parseFloat(document.getElementById(`innerWeight${i}`).value) || 0;
-    const lb = kg / 0.454; // 換算磅
+    const lb = kg / 0.454;
     if (lb < 1) underOneLbCount++;
   }
-  // 每件小於1磅加收 $5
   usdTotal += underOneLbCount * 5;
 
-  usdTotal = usdTotal.toFixed(2);
-
-  // 台幣計算
-  let twdTotal = 'N/A';
-  let customRateDisplay = 'N/A';
-  const today = new Date().toLocaleDateString();
-
-  try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbzsuRiKBiw46nivXXU8Z2XFL-0jIJtfxKDULWTZI_yc1eIzmLTNPCgFwxFzc94rXt7g/exec');
-    const data = await res.json();
-    console.log('GAS 回傳：', data);
-
-    const usdSell = parseFloat(data.usdCashSell);
-    if (!isNaN(usdSell)) {
-      const customRate = usdSell + 0.8;
-      customRateDisplay = customRate.toFixed(3);
-      twdTotal = Math.ceil(parseFloat(usdTotal) * customRate);
-    } else {
-      console.error('匯率資料無效', data);
-    }
-  } catch (err) {
-    console.error('fetch 匯率錯誤', err);
-  }
-
   // 顯示結果
+  const today = new Date().toLocaleDateString();
   document.getElementById('output').innerHTML = `
     轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
     材積重：${volumetricLb} 磅<br>
     實際重：${actualLb} 磅<br>
     計費重量：${chargeableLb} 磅<br>
     小於1磅的內箱件數：${underOneLbCount} 件<br>
-    運費金額：$${usdTotal} 美元<br>
-    台幣金額：約 NT$${twdTotal} 元<br>
-    使用匯率：1 USD = NT$${customRateDisplay}<br>
+    運費金額：$${usdTotal.toFixed(2)} 美元<br>
     今日日期：${today}
   `;
 }
