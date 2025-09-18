@@ -95,7 +95,7 @@ async function calculate() {
   const today = new Date().toLocaleDateString();
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbwIXrYJFsn79jgdIwTVwlg-rb7_i2zYBipXQu4MS27kIvsNOu-NNBaa_d9pHxw7768L/exec');
+    const res = await fetch('https://script.google.com/macros/s/AKfycbyy8j6OjKPzsY45hTuJpUBlJWiVNy-dBrJduFDU92PXNHSoJAbvakogwTi_UT5YlGZ8/exec');
     const data = await res.json();
     const usdSell = parseFloat(data.usdCashSell);
     if (!isNaN(usdSell)) {
@@ -122,3 +122,4 @@ async function calculate() {
 </script>
 </body>
 </html>
+
