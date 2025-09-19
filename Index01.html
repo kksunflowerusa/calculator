@@ -92,8 +92,7 @@ renderPackageInputs(); // 初始 1 件
 
 async function calculate() {
   const pkgCount = parseInt(document.getElementById('packageCount').value) || 1;
-  const url = 
-'https://script.google.com/macros/s/AKfycbyc5KGK4XFSOhO31d6Z-LyLvJh6S33MKSEmc-_CrRL5yeJVv-2NK_foMhIFgfRO50eL/exec';
+  const url = 'https://script.google.com/macros/s/AKfycbynG8dx7ZcYkHdI6clpdlUelTgwwGjuEx6z98XX19ZCR__rEoScW_IxAmHFuC9Go7o9/exec';
 
   let rate = null;
   try {
@@ -152,14 +151,15 @@ async function calculate() {
   }
 
   const totalTwd = rate ? Math.ceil(totalUsd * (rate + 0.8)) : 'N/A';
+  const today = new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
 
   outputHTML += `
     <div style="margin-top:20px; padding:15px; border-top:2px solid #000;">
       <strong>總計</strong><br>
       總計計費重量：${totalLb} 磅<br>
       總計應付金額：$${totalUsd.toFixed(2)} 美元<br>
-      台幣總金額：約 NT$${totalTwd}
-      使用匯率：1 USD = NT$${rateText}<br>
+      台幣總金額：約 NT$${totalTwd}<br>
+      使用匯率：${rate ? rate.toFixed(2) : 'N/A'} (1 USD = ? TWD)<br>
       今日日期：${today}
     </div>
   `;
