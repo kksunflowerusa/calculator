@@ -150,16 +150,20 @@ async function calculate() {
     `;
   }
 
-  const totalTwd = rate ? Math.ceil(totalUsd * (rate + 0.8)) : 'N/A';
+  // 取件費：每件 5 美金
+  const pickupFeeUsd = pkgCount * 5;
+  const grandTotalUsd = totalUsd + pickupFeeUsd;
+  const totalTwd = rate ? Math.ceil(grandTotalUsd * (rate + 0.8)) : 'N/A';
   const today = new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
 
   outputHTML += `
     <div style="margin-top:20px; padding:15px; border-top:2px solid #000;">
       <strong>總計</strong><br>
       總計計費重量：${totalLb} 磅<br>
-      總計應付金額：$${totalUsd.toFixed(2)} 美元<br>
+      取件費（${pkgCount} 件 × $5）：$${pickupFeeUsd.toFixed(2)} 美元<br>
+      總計應付金額(含取件費)：$${grandTotalUsd.toFixed(2)} 美元<br>
       台幣總金額：約 NT$${totalTwd}<br>
-      使用匯率：${rate ? rate.toFixed(2) : 'N/A'} (1 USD = ? TWD)<br>
+      使用匯率：${rate ? rate.toFixed(2) : 'N/A'} <br>
       今日日期：${today}
     </div>
   `;
@@ -169,4 +173,3 @@ async function calculate() {
 </script>
 </body>
 </html>
-
