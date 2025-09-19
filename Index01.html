@@ -163,7 +163,7 @@ async function calculate() {
       取件費（${pkgCount} 件 × $5）：$${pickupFeeUsd.toFixed(2)} 美元<br>
       總計應付金額(含取件費)：$${grandTotalUsd.toFixed(2)} 美元<br>
       台幣總金額：約 NT$${totalTwd}<br>
-      使用匯率：${rate ? rate.toFixed(2) : 'N/A'} <br>
+      使用匯率：1 USD = NT$${customRateDisplay}
       今日日期：${today}
     </div>
   `;
@@ -173,3 +173,4 @@ async function calculate() {
 </script>
 </body>
 </html>
+
