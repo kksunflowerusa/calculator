@@ -16,17 +16,15 @@
 </style>
 </head>
 <body>
-  <h2>B4運費計算器</h2>
+<h2>BB運費計算器</h2>
 
-  <label>件數：
-    <input type="number" id="packageCount" value="1" min="1" step="1" onchange="renderPackageInputs()">
-  </label>
+<label>件數：
+  <input type="number" id="packageCount" value="1" min="1" step="1" onchange="renderPackageInputs()">
+</label>
 
-  <div id="packages"></div>
-
-  <button onclick="calculate()">計算金額</button>
-
-  <div id="output"></div>
+<div id="packages"></div>
+<button onclick="calculate()">計算金額</button>
+<div id="output"></div>
 
 <script>
 // 解析數字（可處理含逗號與貨幣符號）
@@ -54,7 +52,6 @@ function findRateInObj(obj) {
     const v = parseNumberLoose(obj.rates.TWD);
     if (Number.isFinite(v) && v > 1 && v < 200) return v;
   }
-  // 深度搜尋
   function recur(o, depth=0) {
     if (depth > 6 || o == null) return null;
     if (typeof o === 'number' && o > 1 && o < 200) return o;
@@ -63,9 +60,15 @@ function findRateInObj(obj) {
       if (Number.isFinite(n) && n > 1 && n < 200) return n;
     }
     if (Array.isArray(o)) {
-      for (const el of o) { const r = recur(el, depth+1); if (r) return r; }
+      for (const el of o) {
+        const r = recur(el, depth+1);
+        if (r) return r;
+      }
     } else if (typeof o === 'object') {
-      for (const k of Object.keys(o)) { const r = recur(o[k], depth+1); if (r) return r; }
+      for (const k of Object.keys(o)) {
+        const r = recur(o[k], depth+1);
+        if (r) return r;
+      }
     }
     return null;
   }
@@ -93,24 +96,28 @@ renderPackageInputs(); // 初始 1 件
 async function calculate() {
   const pkgCount = parseInt(document.getElementById('packageCount').value) || 1;
   const url = 'https://script.google.com/macros/s/AKfycbx6jRRXCt3xgWVQBulc945UAe6nS1HtaxDVcvxixzYbNdDT7iY_nir4EzvRyGRtXA/exec';
+  let baseRate = null;
 
-  let rate = null;
   try {
     const res = await fetch(url, { cache: 'no-cache' });
     try {
       const json = await res.json();
-      rate = findRateInObj(json);
+      baseRate = findRateInObj(json);
     } catch {
       const txt = await res.text();
       const m = txt.match(/([0-9]+(?:\.[0-9]+)?)/g);
       if (m) {
         for (const x of m) {
           const v = parseNumberLoose(x);
-          if (Number.isFinite(v) && v > 1 && v < 200) { rate = v; break; }
+          if (Number.isFinite(v) && v > 1 && v < 200) { baseRate = v; break; }
         }
       }
     }
   } catch(e){ console.error('匯率抓取錯誤', e); }
+
+  // 加上0.8並格式化到小數點三位
+  const finalRate = baseRate ? (baseRate + 0.8) : null;
+  const rateDisplay = finalRate ? finalRate.toFixed(3) : 'N/A';
 
   let outputHTML = '';
   let totalLb = 0;
@@ -123,19 +130,19 @@ async function calculate() {
     const weightKg = parseFloat(document.getElementById(`weight${i}`).value) || 0;
 
     const lengthIn = Math.ceil(lengthCm / 2.54);
-    const widthIn  = Math.ceil(widthCm  / 2.54);
+    const widthIn  = Math.ceil(widthCm / 2.54);
     const heightIn = Math.ceil(heightCm / 2.54);
+
     const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
-    const actualLb = Math.ceil(weightKg / 0.454);
+    const actualLb     = Math.ceil(weightKg / 0.454);
     const chargeableLb = Math.max(volumetricLb, actualLb);
 
     // 運費公式：首磅30 + 續磅3.99 * (chargeableLb - 1)
     const usdAmount = 30 + (chargeableLb > 1 ? (chargeableLb - 1) * 3.99 : 0);
-
-    totalLb  += chargeableLb;
+    totalLb += chargeableLb;
     totalUsd += usdAmount;
 
-    const twdAmount = rate ? Math.ceil(usdAmount * (rate + 0.8)) : 'N/A';
+    const twdAmount = finalRate ? Math.ceil(usdAmount * finalRate) : 'N/A';
 
     outputHTML += `
       <div class="pkg-block">
@@ -146,14 +153,12 @@ async function calculate() {
         計費重量：${chargeableLb} 磅<br>
         應付金額：$${usdAmount.toFixed(2)} 美元<br>
         台幣金額：約 NT$${twdAmount}
-      </div>
-    `;
+      </div>`;
   }
 
-  // 取件費：每件 5 美金
   const pickupFeeUsd = pkgCount * 5;
   const grandTotalUsd = totalUsd + pickupFeeUsd;
-  const totalTwd = rate ? Math.ceil(grandTotalUsd * (rate + 0.8)) : 'N/A';
+  const totalTwd = finalRate ? Math.ceil(grandTotalUsd * finalRate) : 'N/A';
   const today = new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
 
   outputHTML += `
@@ -163,14 +168,12 @@ async function calculate() {
       取件費（${pkgCount} 件 × $5）：$${pickupFeeUsd.toFixed(2)} 美元<br>
       總計應付金額(含取件費)：$${grandTotalUsd.toFixed(2)} 美元<br>
       台幣總金額：約 NT$${totalTwd}<br>
-      使用匯率：1 USD = NT$${customRateDisplay}
+      使用匯率：1 USD = NT$${rateDisplay}<br>
       今日日期：${today}
-    </div>
-  `;
+    </div>`;
 
   document.getElementById('output').innerHTML = outputHTML;
 }
 </script>
 </body>
 </html>
-
