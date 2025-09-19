@@ -3,189 +3,149 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>運費計算器（匯率抓取強化）</title>
+<title>B2運費計算器</title>
 <style>
-  body {font-family: Arial, sans-serif; max-width: 700px; margin: 30px auto; padding: 20px;}
+  body {font-family: Arial, sans-serif; max-width: 900px; margin: 30px auto; padding: 20px;}
   label {display:block; margin-top:10px;}
-  input[type="number"], input[type="text"] {margin-top:5px; padding:6px; width:100%;}
-  button {margin-top:15px; padding:8px 15px;}
-  #output {margin-top:20px; padding:12px; border:1px solid #ccc; background:#f9f9f9;}
-  #debug {margin-top:12px; padding:10px; border:1px dashed #888; background:#fff; font-size:0.9rem; display:none;}
-  .small {font-size:0.9rem; color:#555;}
+  input[type="number"] {margin-top:5px; padding:6px; width:100%;}
+  select, button {margin-top:15px; padding:8px 15px;}
+  #itemsContainer {margin-top:20px;}
+  .item-block {border:1px solid #ccc; padding:12px; margin-top:15px; background:#f9f9f9;}
+  #output {margin-top:25px; padding:12px; border:1px solid #ccc; background:#f0f0f0;}
 </style>
 </head>
 <body>
-  <h2>B2運費計算器（含匯率抓取強化）</h2>
+  <h2>B2運費計算器</h2>
 
-  <label>長 (公分)：<input type="number" id="length" step="0.01"></label>
-  <label>寬 (公分)：<input type="number" id="width" step="0.01"></label>
-  <label>高 (公分)：<input type="number" id="height" step="0.01"></label>
-  <label>重量 (公斤)：<input type="number" id="weight" step="0.01"></label>
+  <label>件數：
+    <select id="packageCount" onchange="generateInputs()">
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+  </label>
 
-  <label><input type="checkbox" id="showDebug"> 顯示除錯資訊</label>
+  <div id="itemsContainer"></div>
 
   <button onclick="calculate()">計算金額</button>
 
   <div id="output"></div>
-  <div id="debug" class="small"></div>
 
 <script>
-/* Helper: 安全 parse，會把 '1,234.56' / 'NT$32.10' 之類轉成數字 */
+function generateInputs() {
+  const container = document.getElementById('itemsContainer');
+  container.innerHTML = '';
+  const count = parseInt(document.getElementById('packageCount').value, 10);
+
+  for (let i = 1; i <= count; i++) {
+    container.insertAdjacentHTML('beforeend', `
+      <div class="item-block">
+        <strong>第 ${i} 件</strong><br>
+        <label>長 (公分)：<input type="number" step="0.01" id="length${i}"></label>
+        <label>寬 (公分)：<input type="number" step="0.01" id="width${i}"></label>
+        <label>高 (公分)：<input type="number" step="0.01" id="height${i}"></label>
+        <label>重量 (公斤)：<input type="number" step="0.01" id="weight${i}"></label>
+      </div>
+    `);
+  }
+}
+
+// 預設產生 1 件輸入
+generateInputs();
+
 function parseNumberLoose(v) {
-  if (v == null) return NaN;
-  if (typeof v === 'number') return v;
-  const s = String(v).replace(/[^\d.\-]/g, '');
+  const s = String(v ?? '').replace(/[^\d.\-]/g, '');
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : NaN;
 }
 
-/* 嘗試從各種 JSON 結構或文字中找出合理匯率（範圍：1..200） */
 function findRateInObj(obj) {
-  if (obj == null) return null;
-  const candidateKeys = ['usdCashSell','usdSell','cashSell','sell','rate','exchangeRate','usd_to_twd','usdtotwd','usdToTwd','USDTWD','TWD','twd'];
-  // 直接 key 搜尋（不分大小寫）
+  if (!obj) return null;
+  const keys = ['usdCashSell','usdSell','cashSell','sell','rate','exchangeRate','usd_to_twd'];
   for (const k of Object.keys(obj)) {
-    for (const c of candidateKeys) {
-      if (k.toLowerCase() === c.toLowerCase()) {
-        const v = parseNumberLoose(obj[k]);
-        if (Number.isFinite(v) && v > 1 && v < 200) return v;
-      }
+    if (keys.includes(k) && Number.isFinite(parseNumberLoose(obj[k]))) {
+      const v = parseNumberLoose(obj[k]);
+      if (v > 1 && v < 200) return v;
     }
   }
-  // 常見 nested: rates.TWD, data.rates.TWD 等
+  if (obj.rates && obj.rates.TWD) {
+    const v = parseNumberLoose(obj.rates.TWD);
+    if (v > 1 && v < 200) return v;
+  }
+  return null;
+}
+
+async function getExchangeRate() {
+  const url = 'https://script.google.com/macros/s/AKfycbynG8dx7ZcYkHdI6clpdlUelTgwwGjuEx6z98XX19ZCR__rEoScW_IxAmHFuC9Go7o9/exec';
   try {
-    if (obj.rates) {
-      const r = obj.rates.TWD || obj.rates.TW || obj.rates.Tw || obj.rates['TWD'];
-      const v = parseNumberLoose(r);
-      if (Number.isFinite(v) && v > 1 && v < 200) return v;
-    }
-  } catch(e){}
-  // 遞迴搜尋第一個看起來像匯率的數字
-  function recur(o, depth=0) {
-    if (depth > 6 || o == null) return null;
-    if (typeof o === 'number') {
-      if (o > 1 && o < 200) return o;
-      return null;
-    }
-    if (typeof o === 'string') {
-      const n = parseNumberLoose(o);
-      if (Number.isFinite(n) && n > 1 && n < 200) return n;
-      return null;
-    }
-    if (Array.isArray(o)) {
-      for (const el of o) {
-        const r = recur(el, depth+1);
-        if (r) return r;
-      }
-    } else if (typeof o === 'object') {
-      for (const k of Object.keys(o)) {
-        const r = recur(o[k], depth+1);
-        if (r) return r;
-      }
-    }
-    return null;
-  }
-  return recur(obj, 0);
+    const res = await fetch(url, {cache: 'no-cache'});
+    const json = await res.json();
+    const rate = findRateInObj(json);
+    if (rate) return Number(rate) + 0.8;
+  } catch {}
+  return null;
 }
 
 async function calculate() {
-  const debugEl = document.getElementById('debug');
-  const showDebug = document.getElementById('showDebug').checked;
-  debugEl.style.display = showDebug ? 'block' : 'none';
-  debugEl.innerHTML = '';
+  const count = parseInt(document.getElementById('packageCount').value, 10);
+  const today = new Date().toLocaleDateString();
 
-  // 取得輸入
-  const lengthCm = parseFloat(document.getElementById('length').value) || 0;
-  const widthCm  = parseFloat(document.getElementById('width').value)  || 0;
-  const heightCm = parseFloat(document.getElementById('height').value) || 0;
-  const weightKg = parseFloat(document.getElementById('weight').value) || 0;
+  let totalLb = 0;
+  let totalUsd = 0;
+  const results = [];
 
-  // 英吋與材積重
-  const lengthIn = Math.ceil(lengthCm / 2.54);
-  const widthIn  = Math.ceil(widthCm  / 2.54);
-  const heightIn = Math.ceil(heightCm / 2.54);
-  const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
-  const actualLb = Math.ceil(weightKg / 0.454);
-  const chargeableLb = Math.max(volumetricLb, actualLb);
+  for (let i = 1; i <= count; i++) {
+    const l = parseFloat(document.getElementById(`length${i}`).value) || 0;
+    const w = parseFloat(document.getElementById(`width${i}`).value) || 0;
+    const h = parseFloat(document.getElementById(`height${i}`).value) || 0;
+    const kg = parseFloat(document.getElementById(`weight${i}`).value) || 0;
 
-  // 美金金額（保留原公式）
-  // 注意：原程式使用 (3.99 * 0.8 + 1 * 0.75) — 我保留你原始式子並確保轉為數字
-  const unitRate = (3.99 * 0.8 + 1 * 0.75);
-  const usdTotalFloat = Number(chargeableLb) * Number(unitRate);
-  const usdTotal = usdTotalFloat.toFixed(2);
+    const li = Math.ceil(l / 2.54);
+    const wi = Math.ceil(w / 2.54);
+    const hi = Math.ceil(h / 2.54);
 
-  // 目前要從 GAS Web App 取得匯率
-  let twdTotal = 'N/A';
-  let customRateDisplay = 'N/A';
-  let debugMsg = '';
+    const volumetricLb = Math.ceil((li * wi * hi) / 139);
+    const actualLb = Math.ceil(kg / 0.454);
+    const chargeableLb = Math.max(volumetricLb, actualLb);
 
-  // 如果要改成你的 Web App URL 就把下面的 url 換掉
-  const url = 'https://script.google.com/macros/s/AKfycbynG8dx7ZcYkHdI6clpdlUelTgwwGjuEx6z98XX19ZCR__rEoScW_IxAmHFuC9Go7o9/exec';
+    const usd = 30 + 3.99 * Math.max(0, chargeableLb - 1);
 
-  try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    debugMsg += `HTTP ${res.status} ${res.statusText}<br>`;
-    // 先嘗試 parse JSON
-    try {
-      const json = await res.json();
-      debugMsg += `回傳 JSON（前 800 字）：<pre>${JSON.stringify(json).slice(0,800)}</pre><br>`;
-      const found = findRateInObj(json);
-      if (found) {
-        const usdSell = found;
-        const finalRate = Number(usdSell) + 0.8; // 維持原先商業邏輯
-        customRateDisplay = finalRate.toFixed(3);
-        twdTotal = Math.ceil(usdTotalFloat * finalRate);
-        debugMsg += `從 JSON 偵測匯率：${usdSell} → 使用 finalRate（+0.8）=${customRateDisplay}<br>`;
-      } else {
-        debugMsg += 'JSON 中未找到合理匯率欄位。<br>';
-      }
-    } catch (jsonErr) {
-      // 若不是 JSON，讀成文字並嘗試擷取數字
-      const txt = await res.text();
-      debugMsg += `回傳非 JSON 文字（前 800 字）：<pre>${txt.slice(0,800)}</pre><br>`;
-      // 找出第一個在合理範圍內的數字
-      const matches = txt.match(/([0-9]+(?:\.[0-9]+)?)/g);
-      if (matches && matches.length) {
-        let found = null;
-        for (const m of matches) {
-          const v = parseNumberLoose(m);
-          if (Number.isFinite(v) && v > 1 && v < 200) { found = v; break; }
-        }
-        if (found) {
-          const usdSell = found;
-          const finalRate = Number(usdSell) + 0.8;
-          customRateDisplay = finalRate.toFixed(3);
-          twdTotal = Math.ceil(usdTotalFloat * finalRate);
-          debugMsg += `從文字擷取到可能匯率：${usdSell} → 使用 finalRate（+0.8）=${customRateDisplay}<br>`;
-        } else {
-          debugMsg += '文字中未擷取到合理匯率數字。<br>';
-        }
-      } else {
-        debugMsg += '文字回傳中找不到任何數字。<br>';
-      }
-    }
-  } catch (err) {
-    // 常見於 CORS 或 fetch 失敗
-    debugMsg += `fetch 發生錯誤：${err.message}<br>`;
-    debugMsg += `可能原因：GAS Web App 未部署為「任何人（包含匿名）」可存取，或瀏覽器遭到 CORS 阻擋。<br>`;
-    debugMsg += `請確認：Apps Script 已部署為 Web App、並在部署設定中選擇「任何人（包含匿名）」能存取，且 doGet 回傳 JSON（ContentService.setMimeType(JSON)）。<br>`;
+    totalLb += chargeableLb;
+    totalUsd += usd;
+
+    results.push({
+      index: i,
+      li, wi, hi,
+      volumetricLb, actualLb, chargeableLb,
+      usd: usd.toFixed(2)
+    });
   }
 
-  // 顯示結果
-  const out = document.getElementById('output');
-  out.innerHTML = `
-    轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
-    材積重：${volumetricLb} 磅<br>
-    實際重：${actualLb} 磅<br>
-    計費重量：${chargeableLb} 磅<br>
-    應付金額：$${usdTotal} 美元<br>
-    台幣金額：約 NT$${twdTotal}<br>
-    使用匯率：1 USD = NT$${customRateDisplay}<br>
-    <div class="small">（匯率計算為：伺服器回傳的 usdSell + 0.8，並以此乘上美金總額後無條件進位顯示）</div>
+  const rate = await getExchangeRate();
+  const rateText = rate ? rate.toFixed(3) : 'N/A';
+  const totalTwd = rate ? Math.ceil(totalUsd * rate) : 'N/A';
+
+  let html = results.map(r => `
+    <strong>第 ${r.index} 件</strong><br>
+    尺寸：${r.li} × ${r.wi} × ${r.hi} 英寸<br>
+    材積重：${r.volumetricLb} 磅<br>
+    實際重：${r.actualLb} 磅<br>
+    計費重量：${r.chargeableLb} 磅<br>
+    應付金額：$${r.usd} 美元<br><br>
+  `).join('');
+
+  html += `<hr>
+    <strong>總計</strong><br>
+    總計費重量：${totalLb} 磅<br>
+    應付總金額：$${totalUsd.toFixed(2)} 美元<br>
+    台幣總金額：約 NT$${totalTwd}<br>
+    使用匯率：1 USD = NT$${rateText}<br>
+    今日日期：${today}
   `;
 
-  debugEl.innerHTML = `<strong>除錯資訊</strong><br>${debugMsg}`;
-  debugEl.style.display = showDebug ? 'block' : 'none';
+  document.getElementById('output').innerHTML = html;
 }
 </script>
 </body>
