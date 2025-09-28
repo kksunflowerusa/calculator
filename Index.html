@@ -95,7 +95,7 @@ async function calcAll(){
       const fxResp = await fetch(FX_URL);
       const fxJson = await fxResp.json();
       // 嘗試支援多種 key
-      const keys = ['rate','Rate','usdToTwd','USDTWD','twd','TWD'];
+      const keys = ['rate','Rate','usdToTwd','USDTWD','twd','TWD','usdClose'];
       for(const k of keys){
         if(fxJson[k]!==undefined){
           fxRate = parseFloat(fxJson[k]);
@@ -133,3 +133,4 @@ async function calcAll(){
 </script>
 </body>
 </html>
+
