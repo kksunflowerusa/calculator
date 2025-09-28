@@ -116,8 +116,9 @@ async function calcAll(){
       實際重：${realWeight} lb<br/>
       <b>計費磅數：${chargeWeight} lb</b><br/><br/>
       1️⃣ 國際運費：$${intlFee.toFixed(2)}<br/>
-      2️⃣ TW 服務費(<=20lb)：$${twFee.toFixed(2)}<br/>
+      2️⃣ TW 服務費(未超過20lbs)：$${twFee.toFixed(2)}<br/>
       3️⃣ 美國國內運費：$${usFee.toFixed(2)}<br/>
+      分區: ${resp.zone}<br/>
       ──────────────<br/>
       <b>總運費：$${totalUSD.toFixed(2)}</b><br/><br/>
       💱 台幣總金額：約 NT$${totalTWD}<br/>
