@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>B3運費計算機</title>
+<title>台灣→美國 運費計算機</title>
 <style>
   body {font-family: Arial,"Noto Sans TC",sans-serif; max-width:720px; margin:30px auto; padding:20px;}
   label {display:block; margin-top:12px;}
@@ -15,9 +15,8 @@
 </style>
 </head>
 <body>
-<h2>B3運費計算機</h2>
+<h2>台灣→美國 運費計算機</h2>
 
-<!-- 尺寸與重量輸入 -->
 <label>長度（公分）</label>
 <input id="lenCm" type="number" step="0.1" min="0.1" placeholder="例如 40" />
 
@@ -31,7 +30,7 @@
 <input id="kg" type="number" step="0.1" min="0.1" placeholder="例如 5" />
 
 <label>美國收件 Zip code（5 位）</label>
-<input id="zip" type="text" maxlength="5" placeholder="例如 77084" />
+<input id="zip" type="text" maxlength="5" placeholder="例如 92870" />
 
 <button onclick="calcAll()">計算總運費</button>
 
@@ -39,7 +38,7 @@
 <div id="output" class="result" style="display:none;"></div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec'; // ←換成實際 Apps Script 網址
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec'; // ←改成實際部署的 Apps Script URL
 const INTERNATIONAL_RATE = 3.99; // USD per lb
 const SERVICE_FEE_THRESHOLD = 20; // lb
 const SERVICE_FEE = 6; // USD
@@ -60,7 +59,6 @@ function calcAll(){
   const kg  = Number(document.getElementById('kg').value);
   const zip = document.getElementById('zip').value.trim();
 
-  // 驗證
   if([len,wid,hei,kg].some(v=>!v || v<=0)){
     show('請輸入正確的長寬高與重量（皆需大於 0）。',true); return;
   }
@@ -76,21 +74,24 @@ function calcAll(){
   const realWeight = ceil(kg / 0.454);
   const chargeWeight = Math.max(volWeight, realWeight);
 
-  // 國際運費
   const intlFee = chargeWeight * INTERNATIONAL_RATE;
-
-  // ---- 2️⃣ TW 服務費 ----
   const twFee = chargeWeight <= SERVICE_FEE_THRESHOLD ? SERVICE_FEE : 0;
 
-  // ---- 3️⃣ 查詢美國國內運費 ----
   show('計算中…');
 
   fetch(`${API_URL}?zip=${encodeURIComponent(zip)}&weight=${chargeWeight}`)
     .then(r=>r.json())
     .then(resp=>{
-      if(!resp.success){ show('國內運費錯誤：'+resp.message,true); return; }
+      if(!resp.success){
+        show('國內運費錯誤：'+resp.message,true); return;
+      }
 
-      const usFee = Number(resp.rate);
+      // ★ 關鍵修正：解析為純數字
+      const usFee = parseFloat(String(resp.rate).toString().replace(/[^\d.]/g,''));
+      if(isNaN(usFee)){
+        show('國內運費格式錯誤，請檢查試算表數據。',true); return;
+      }
+
       const total = intlFee + twFee + usFee;
 
       show(`
@@ -111,5 +112,3 @@ function calcAll(){
 </script>
 </body>
 </html>
-
-
