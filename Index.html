@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>B3運費計算機</title>
+<title>B3運費計算機3</title>
 <style>
   body {font-family: Arial,"Noto Sans TC",sans-serif; max-width:720px; margin:30px auto; padding:20px;}
   label {display:block; margin-top:12px;}
@@ -15,7 +15,7 @@
 </style>
 </head>
 <body>
-<h2>B3運費計算機</h2>
+<h2>B3運費計算機3</h2>
 
 <label>長度（公分）</label>
 <input id="lenCm" type="number" step="0.1" min="0.1" placeholder="例如 40" />
@@ -38,11 +38,11 @@
 <div id="output" class="result" style="display:none;"></div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec'; // ←改成實際部署的 Apps Script URL
-const FX_URL  = 'https://script.google.com/macros/s/AKfycbxIiNX4edi5eqyMPKnCnj0sohXVM9R2PtzRDSParjSHuLlT2eLwY8CQRJMzFVGsKWzq/exec'; // 抓取即時匯率
-const INTERNATIONAL_RATE = 3.99; // USD per lb
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec'; // 國內運費 Apps Script
+const FX_URL  = 'https://script.google.com/macros/s/AKfycbxIiNX4edi5eqyMPKnCnj0sohXVM9R2PtzRDSParjSHuLlT2eLwY8CQRJMzFVGsKWzq/exec'; // 匯率 Apps Script
+const INTERNATIONAL_RATE = 3.99;  // USD per lb
 const SERVICE_FEE_THRESHOLD = 20; // lb
-const SERVICE_FEE = 6; // USD
+const SERVICE_FEE = 6;            // USD
 
 function show(msg, isErr=false){
   const out = document.getElementById('output');
@@ -50,26 +50,8 @@ function show(msg, isErr=false){
   out.className = 'result' + (isErr?' error':'');
   out.innerHTML = msg;
 }
-function ceil(n){ return Math.ceil(Number(n)); }
 
-// 嘗試從 JSON 物件中找出合理匯率
-function findRateInObj(obj) {
-  if (!obj) return null;
-  const keys = ['usdCashSell','usdSell','cashSell','sell','rate','exchangeRate','usd_to_twd','usdtotwd','usdToTwd','USDTWD','TWD','twd'];
-  for (const k of Object.keys(obj)) {
-    for (const c of keys) {
-      if (k.toLowerCase() === c.toLowerCase()) {
-        const v = parseFloat(obj[k]);
-        if (Number.isFinite(v) && v>1 && v<200) return v;
-      }
-    }
-  }
-  if (obj.rates && obj.rates.TWD) {
-    const v = parseFloat(obj.rates.TWD);
-    if (Number.isFinite(v) && v>1 && v<200) return v;
-  }
-  return null;
-}
+function ceil(n){ return Math.ceil(Number(n)); }
 
 async function calcAll(){
   const len = Number(document.getElementById('lenCm').value);
@@ -85,7 +67,7 @@ async function calcAll(){
     show('請輸入 5 位數 Zip code。',true); return;
   }
 
-  // ---- 1️⃣ 計算材積重與實際重量 ----
+  // ---- 計算材積重與實際重量 ----
   const lIn = ceil(len/2.54);
   const wIn = ceil(wid/2.54);
   const hIn = ceil(hei/2.54);
@@ -94,46 +76,36 @@ async function calcAll(){
   const chargeWeight = Math.max(volWeight, realWeight);
 
   const intlFee = chargeWeight * INTERNATIONAL_RATE;
-  const twFee = chargeWeight <= SERVICE_FEE_THRESHOLD ? SERVICE_FEE : 0;
+  const twFee   = chargeWeight <= SERVICE_FEE_THRESHOLD ? SERVICE_FEE : 0;
 
   show('計算中…');
 
   try {
-    // 2️⃣ 取得美國國內運費
+    // 1️⃣ 國內運費
     const resp = await fetch(`${API_URL}?zip=${encodeURIComponent(zip)}&weight=${chargeWeight}`);
-    const data = await resp.json();
-    if(!data.success) { show('國內運費錯誤：'+data.message,true); return; }
+    const json = await resp.json();
+    if(!json.success){ show('國內運費錯誤：'+json.message,true); return; }
 
-    const usFee = parseFloat(String(data.rate).toString().replace(/[^\d.]/g,''));
+    const usFee = parseFloat(String(json.rate).toString().replace(/[^\d.]/g,''));
     if(isNaN(usFee)){ show('國內運費格式錯誤，請檢查試算表數據。',true); return; }
 
-    const totalUsd = intlFee + twFee + usFee;
+    const totalUSD = intlFee + twFee + usFee;
 
-    // 3️⃣ 抓取即時台幣匯率並加 0.8
-    let twdRate = null;
-    try {
-      const fxResp = await fetch(FX_URL, {cache:'no-cache'});
-      const fxText = await fxResp.text();
-      let fxJson;
-      try { fxJson = JSON.parse(fxText); } catch {}
-      const baseRate = fxJson ? findRateInObj(fxJson) : (() => {
-        const m = fxText.match(/([0-9]+(?:\.[0-9]+)?)/g);
-        if (m) {
-          for (const x of m) {
-            const v = parseFloat(x);
-            if (v > 1 && v < 200) return v;
-          }
-        }
-        return null;
-      })();
-      if (baseRate) twdRate = baseRate + 0.8;
-    } catch(e){ console.error('匯率抓取失敗', e); }
+    // 2️⃣ 從你的 Apps Script 抓匯率
+    let fxRate = null;
+    try{
+      const fxResp = await fetch(FX_URL);
+      const fxJson = await fxResp.json();
+      fxRate = parseFloat(fxJson.rate); // 假設 Apps Script 回傳 {"rate": 30.5} 這種格式
+    } catch(e){
+      console.warn('匯率抓取失敗', e);
+    }
 
-    const twdTotal = twdRate ? Math.ceil(totalUsd * twdRate) : 'N/A';
-    const rateDisplay = twdRate ? twdRate.toFixed(3) : 'N/A';
-    const today = new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
+    const finalRate = fxRate ? (fxRate + 0.8) : null;
+    const totalTWD = finalRate ? Math.round(totalUSD * finalRate) : 'N/A';
+    const rateDisplay = finalRate ? finalRate.toFixed(3) : 'N/A';
 
-    // 4️⃣ 顯示結果
+    // 3️⃣ 顯示結果
     show(`
       <strong>計算結果</strong><br/>
       ──────────────<br/>
@@ -141,14 +113,15 @@ async function calcAll(){
       實際重：${realWeight} lb<br/>
       <b>計費磅數：${chargeWeight} lb</b><br/><br/>
       1️⃣ 國際運費：$${intlFee.toFixed(2)}<br/>
-      2️⃣ TW 服務費(<=20磅)：$${twFee.toFixed(2)}<br/>
+      2️⃣ TW 服務費(<=20lb)：$${twFee.toFixed(2)}<br/>
       3️⃣ 美國國內運費：$${usFee.toFixed(2)}<br/>
       ──────────────<br/>
-      <b>總運費：$${totalUsd.toFixed(2)}</b><br/><br/>
-      💰 以匯率計算：NT$${twdTotal}<br/>
+      <b>總運費：$${totalUSD.toFixed(2)}</b><br/><br/>
+      💱 台幣總金額：約 NT$${totalTWD}<br/>
       使用匯率：1 USD = NT$${rateDisplay}<br/>
-      今日日期：${today}
+      今日日期：${new Date().toLocaleDateString('zh-TW')}
     `);
+
   } catch(err){
     show('發生錯誤：'+err,true);
   }
@@ -156,5 +129,3 @@ async function calcAll(){
 </script>
 </body>
 </html>
-
-
