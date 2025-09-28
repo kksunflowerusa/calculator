@@ -1,127 +1,76 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>運費計算機</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #f9f9f9;
-    }
-    h2 { color: #333; }
-    form {
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      max-width: 400px;
-    }
-    label {
-      display: block;
-      margin-bottom: 10px;
-    }
-    input {
-      width: 100%;
-      padding: 6px;
-      margin-top: 4px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    button {
-      margin-top: 12px;
-      padding: 10px;
-      width: 100%;
-      background: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    #result {
-      margin-top: 20px;
-      padding: 15px;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    .error { color: red; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>美國國內運費查詢</title>
+<style>
+  body { font-family: Arial, "Noto Sans TC", sans-serif; max-width:720px; margin:30px auto; padding:20px; }
+  label { display:block; margin-top:12px; }
+  input[type="text"], input[type="number"] { width:100%; padding:8px; font-size:16px; box-sizing:border-box; }
+  button { margin-top:12px; padding:10px 16px; font-size:16px; border-radius:8px; }
+  .result { margin-top:18px; padding:12px; border-radius:8px; background:#f7f7f7; }
+  .error { color:#b00020; }
+  .muted { color:#666; font-size:13px; }
+</style>
 </head>
 <body>
-  <h2>B3運費計算機</h2>
-  <form id="shippingForm">
-    <label>長 (cm): <input type="number" id="length" required></label>
-    <label>寬 (cm): <input type="number" id="width" required></label>
-    <label>高 (cm): <input type="number" id="height" required></label>
-    <label>重量 (kg): <input type="number" id="weight" required></label>
-    <label>收件 Zip code: <input type="text" id="zipcode" required></label>
-    <button type="submit">計算運費</button>
-  </form>
+<h2>美國國內運費查詢</h2>
 
-  <div id="result"></div>
+<label>收件 Zip code（5 位）</label>
+<input id="zip" type="text" maxlength="5" placeholder="例如 92870" />
 
-  <script>
-    document.getElementById('shippingForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const resultBox = document.getElementById('result');
-      resultBox.innerHTML = "計算中...";
+<label>重量（磅，lb）</label>
+<input id="weight" type="number" step="0.1" min="0.1" placeholder="輸入數字（小數會進位）" />
 
-      let length_cm = parseFloat(document.getElementById('length').value);
-      let width_cm = parseFloat(document.getElementById('width').value);
-      let height_cm = parseFloat(document.getElementById('height').value);
-      let weight_kg = parseFloat(document.getElementById('weight').value);
-      let zipcode = document.getElementById('zipcode').value.trim();
+<button id="btn" onclick="queryRate()">查詢運費</button>
+<div class="muted">注意：重量小數會進位到下一整磅；表格僅包含 1–100 磅。</div>
 
-      // 換算成英吋 (無條件進位)
-      let length_in = Math.ceil(length_cm / 2.54);
-      let width_in = Math.ceil(width_cm / 2.54);
-      let height_in = Math.ceil(height_cm / 2.54);
+<div id="output" class="result" style="display:none;"></div>
 
-      // 計算材積重
-      let vol_weight = Math.ceil((length_in * width_in * height_in) / 139);
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbw6NAvrixxycMjXFZ7VOVqiECUJnc8_X3munI-RQQZurMqVJzH5lQu_q9lw53rAel5sMQ/exec'; // <- 改成你的Apps Script URL
 
-      // 換算重量 (磅)
-      let actual_weight = Math.ceil(weight_kg / 0.454);
+function showMessage(msg, isError) {
+  const out = document.getElementById('output');
+  out.style.display = 'block';
+  out.innerHTML = msg;
+  out.className = 'result' + (isError ? ' error' : '');
+}
 
-      // 取最大值
-      let billable_weight = Math.max(vol_weight, actual_weight);
+function queryRate() {
+  const zip = document.getElementById('zip').value.trim();
+  const weight = document.getElementById('weight').value.trim();
 
-      // 台灣到美國國際運費
-      let intl_shipping = billable_weight * 3.99;
+  if (!zip || zip.replace(/\D/g,'').length !== 5) {
+    showMessage('請輸入 5 位數 Zip code。', true);
+    return;
+  }
+  if (!weight || isNaN(Number(weight)) || Number(weight) <= 0) {
+    showMessage('請輸入正確的重量（數字，大於 0）。', true);
+    return;
+  }
 
-      // 服務費
-      let service_fee = (billable_weight <= 20) ? 6 : 0;
+  showMessage('查詢中…', false);
 
-      try {
-        // 呼叫 GAS Web App
-        const response = await fetch("https://script.google.com/macros/s/AKfycbwudLjnsUWoB0rInFolQncqK2S4JHLkIBK9inaARCbITloW1sfGmI3RaXBhsKP08OuteQ/exec" + "?zipcode=" + zipcode + "&weight=" + billable_weight);
-        const data = await response.json();
-
-        if (data.error) {
-          resultBox.innerHTML = `<p class="error">${data.error}</p>`;
-          return;
-        }
-
-        let domestic_shipping = parseFloat(data.domestic_fee) || 0;
-        let total = intl_shipping + service_fee + domestic_shipping;
-
-        resultBox.innerHTML = `
-          <p>計費重量: ${billable_weight} 磅</p>
-          <p>國際運費: $${intl_shipping.toFixed(2)}</p>
-          <p>服務費: $${service_fee.toFixed(2)}</p>
-          <p>美國國內運費: $${domestic_shipping.toFixed(2)}</p>
-          <hr>
-          <p><strong>總運費: $${total.toFixed(2)}</strong></p>
-        `;
-      } catch (err) {
-        resultBox.innerHTML = `<p class="error">伺服器錯誤，請稍後再試。</p>`;
+  const url = `${API_URL}?zip=${encodeURIComponent(zip)}&weight=${encodeURIComponent(weight)}`;
+  fetch(url)
+    .then(r => r.json())
+    .then(resp => {
+      if (!resp.success) {
+        showMessage('錯誤：' + resp.message, true);
+      } else {
+        showMessage(`
+          <strong>成功找到費率</strong><br/>
+          Zip code: ${zip}<br/>
+          分區: ${resp.zone}<br/>
+          計費重量: ${resp.weight} lb<br/>
+          費率: <strong>$${resp.rate}</strong>
+        `, false);
       }
-    });
-  </script>
+    })
+    .catch(err => showMessage('發生錯誤：' + err, true));
+}
+</script>
 </body>
 </html>
-
