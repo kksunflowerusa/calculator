@@ -1,98 +1,71 @@
-<!-- Index.html -->
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-    <meta charset="utf-8">
-    <title>運費計算機</title>
-    <style>
-      body { font-family: Arial, Helvetica, sans-serif; max-width: 900px; margin: 20px auto; color:#222; }
-      .card { border:1px solid #e3e3e3; padding:16px; border-radius:8px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
-      label { display:block; margin-top:8px; font-weight:600; }
-      input[type="number"], input[type="text"] { width:160px; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #ccc; }
-      .row { display:flex; gap:12px; align-items:center; margin-top:8px; }
-      button { margin-top:12px; padding:10px 14px; border-radius:8px; border:none; background:#1a73e8; color:white; cursor:pointer; }
-      .result { margin-top:16px; }
-      table { border-collapse: collapse; width:100%; margin-top:8px;}
-      th, td { border: 1px solid #eee; padding:8px; text-align:left; }
-      .muted { color:#666; font-size:0.9em; }
-    </style>
-  </head>
-  <body>
-    <h2>運費計算機（台灣 → 美國）</h2>
-    <div class="card">
-      <div>
-        <label>長 (cm)</label>
-        <input id="len" type="number" step="any" min="0" value="0">
-      </div>
-      <div>
-        <label>寬 (cm)</label>
-        <input id="wid" type="number" step="any" min="0" value="0">
-      </div>
-      <div>
-        <label>高 (cm)</label>
-        <input id="hei" type="number" step="any" min="0" value="0">
-      </div>
-      <div>
-        <label>重量 (kg)</label>
-        <input id="kg" type="number" step="any" min="0" value="0.0">
-      </div>
-      <div>
-        <label>寄到美國 ZIP code</label>
-        <input id="zip" type="text" placeholder="例如 10001 或 00612">
-        <div class="muted">會取前 5 碼比對分區</div>
-      </div>
+<head>
+  <meta charset="utf-8">
+  <title>運費計算機</title>
+  <style>
+    body{font-family:Segoe UI, Roboto, 'Noto Sans TC', Arial; padding:18px; max-width:760px;}
+    label{display:block; margin-top:8px;}
+    input[type="number"], input[type="text"]{width:160px; padding:6px; margin-right:8px;}
+    .row{margin-top:6px;}
+    #result{margin-top:12px; padding:10px; border:1px solid #ddd; background:#f9f9f9;}
+    button{margin-top:12px; padding:8px 14px;}
+  </style>
+</head>
+<body>
+  <h2>運費計算機（台灣寄美國）</h2>
 
-      <button onclick="calculate()">計算運費</button>
+  <div>
+    <label>長 (cm) <input id="length" type="number" step="0.1" /></label>
+    <label>寬 (cm) <input id="width" type="number" step="0.1" /></label>
+    <label>高 (cm) <input id="height" type="number" step="0.1" /></label>
+    <label>重量 (kg) <input id="weight" type="number" step="0.01" /></label>
+    <label>美國收件 Zip code <input id="zip" type="text" /></label>
 
-      <div id="loading" style="display:none; margin-top:8px;">計算中…</div>
-
-      <div id="result" class="result"></div>
+    <div class="row">
+      <button onclick="onCalculate()">計算運費</button>
     </div>
+  </div>
 
-    <script>
-      function fmtUSD(n) {
-        return (typeof n === 'number') ? n.toLocaleString('en-US', {style:'currency', currency:'USD'}) : n;
+  <div id="result"></div>
+
+  <script>
+    function show(msg){
+      document.getElementById('result').innerHTML = msg;
+    }
+
+    function onCalculate(){
+      var length = document.getElementById('length').value;
+      var width = document.getElementById('width').value;
+      var height = document.getElementById('height').value;
+      var weight = document.getElementById('weight').value;
+      var zip = document.getElementById('zip').value;
+
+      if(!length || !width || !height || !weight || !zip){
+        alert('請輸入所有欄位');
+        return;
       }
+      show('計算中，請稍候…');
 
-      function calculate() {
-        var len = document.getElementById('len').value;
-        var wid = document.getElementById('wid').value;
-        var hei = document.getElementById('hei').value;
-        var kg  = document.getElementById('kg').value;
-        var zip = document.getElementById('zip').value;
-
-        // 簡單驗證
-        if (!zip) { alert('請輸入 ZIP code'); return; }
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('result').innerHTML = '';
-
-        google.script.run
-          .withSuccessHandler(renderResult)
-          .withFailureHandler(function(err){ document.getElementById('loading').style.display='none'; alert('錯誤：' + err.message); })
-          .computeCharges(len, wid, hei, kg, zip);
-      }
-
-      function renderResult(res) {
-        document.getElementById('loading').style.display = 'none';
-        if (!res) { document.getElementById('result').innerHTML = '未收到資料'; return; }
-
-        var html = '<h3>計算結果</h3>';
-        html += '<table>';
-        html += '<tr><th>項目</th><th>數值</th></tr>';
-        html += '<tr><td>尺寸 (cm)</td><td>' + res.l_cm + ' × ' + res.w_cm + ' × ' + res.h_cm + ' cm</td></tr>';
-        html += '<tr><td>尺寸 (inch 吳)</td><td>' + res.l_in + ' × ' + res.w_in + ' × ' + res.h_in + ' in (各項無條件進位)</td></tr>';
-        html += '<tr><td>材積重 (lb)</td><td>' + res.vol_weight + ' lb</td></tr>';
-        html += '<tr><td>實際重量 (lb)</td><td>' + res.actual_weight + ' lb</td></tr>';
-        html += '<tr><td>計費磅數 (取大者)</td><td>' + res.chargeable + ' lb</td></tr>';
-        html += '<tr><td>分區</td><td>' + (res.zone || '找不到分區') + '</td></tr>';
-        html += '<tr><td>台灣→美國 國際運費</td><td>' + fmtUSD(res.intl_fee) + ' (' + res.chargeable + ' × $3.99)' + '</td></tr>';
-        html += '<tr><td>超低重服務費 (<=20 lb)</td><td>' + fmtUSD(res.service_fee) + '</td></tr>';
-        html += '<tr><td>美國國內運費</td><td>' + fmtUSD(res.domestic_fee) + '</td></tr>';
-        html += '<tr><th>總計</th><th>' + fmtUSD(res.total) + '</th></tr>';
-        html += '</table>';
-        document.getElementById('result').innerHTML = html;
-      }
-    </script>
-  </body>
+      google.script.run.withSuccessHandler(function(res){
+        if(!res || !res.success){
+          show('計算失敗：' + (res && res.error ? res.error : '未知錯誤'));
+          return;
+        }
+        var html = '<b>計算結果</b><br>';
+        html += '材積 (inch 各邊)：' + res.dimsInches.l + ' x ' + res.dimsInches.w + ' x ' + res.dimsInches.h + '（體積='+res.dimsInches.volume+'）<br>';
+        html += '材積重: ' + res.dimWeight + ' lb<br>';
+        html += '實際重: ' + res.actualWeight + ' lb<br>';
+        html += '<b>計費重量: ' + res.billableWeight + ' lb</b><br>';
+        html += '台灣→美國國際運費: $' + res.intlCost.toFixed(2) + '<br>';
+        html += '服務費: $' + Number(res.serviceFee).toFixed(2) + '<br>';
+        html += 'Zip code 分區: ' + (res.zone || '找不到') + '<br>';
+        html += '美國國內費用: ' + (res.domesticRate !== undefined && res.domesticRate !== null ? ('$' + Number(res.domesticRate).toFixed(2)) : ('N/A')) + '<br>';
+        if(res.domesticNote) html += '<small>備註：' + res.domesticNote + '</small><br>';
+        html += '<hr><b>總計: $' + Number(res.total).toFixed(2) + '</b>';
+        show(html);
+      }).calculateShipping(length, width, height, weight, zip);
+    }
+  </script>
+</body>
 </html>
