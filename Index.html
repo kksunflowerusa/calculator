@@ -52,7 +52,7 @@
   </style>
 </head>
 <body>
-  <h2>運費計算機</h2>
+  <h2>B3運費計算機</h2>
   <form id="shippingForm">
     <label>長 (cm): <input type="number" id="length" required></label>
     <label>寬 (cm): <input type="number" id="width" required></label>
@@ -98,7 +98,7 @@
 
       try {
         // 呼叫 GAS Web App
-        const response = await fetch("https://script.google.com/macros/s/AKfycbw73oepvUacco7K_sqnGDiZVSqn9qtzSDfhOjxFi3bcW6KioJ3gubFXgaL8VsjYab7cnQ/exec" + "?zipcode=" + zipcode + "&weight=" + billable_weight);
+        const response = await fetch("https://script.google.com/macros/s/AKfycbwudLjnsUWoB0rInFolQncqK2S4JHLkIBK9inaARCbITloW1sfGmI3RaXBhsKP08OuteQ/exec" + "?zipcode=" + zipcode + "&weight=" + billable_weight);
         const data = await response.json();
 
         if (data.error) {
@@ -124,3 +124,4 @@
   </script>
 </body>
 </html>
+
