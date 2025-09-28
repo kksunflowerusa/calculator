@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>台灣→美國 運費計算機</title>
+<title>B3運費計算機</title>
 <style>
   body {font-family: Arial,"Noto Sans TC",sans-serif; max-width:720px; margin:30px auto; padding:20px;}
   label {display:block; margin-top:12px;}
@@ -15,7 +15,7 @@
 </style>
 </head>
 <body>
-<h2>台灣→美國 運費計算機</h2>
+<h2>B3運費計算機</h2>
 
 <!-- 尺寸與重量輸入 -->
 <label>長度（公分）</label>
@@ -39,7 +39,7 @@
 <div id="output" class="result" style="display:none;"></div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/你的部署ID/exec'; // ←換成實際 Apps Script 網址
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec'; // ←換成實際 Apps Script 網址
 const INTERNATIONAL_RATE = 3.99; // USD per lb
 const SERVICE_FEE_THRESHOLD = 20; // lb
 const SERVICE_FEE = 6; // USD
@@ -111,4 +111,5 @@ function calcAll(){
 </script>
 </body>
 </html>
+
 
