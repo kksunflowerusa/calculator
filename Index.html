@@ -86,16 +86,45 @@ async function calcTotal(){
   const totalUsd = intlUsd + twService + usDomesticUsd;
 
   // === 6. 抓取匯率 (USD→TWD) ===
-  let rate = null;
-  try{
-    const r = await fetch('https://open.er-api.com/v6/latest/USD');
-    const j = await r.json();
-    rate = j?.rates?.TWD ? parseFloat(j.rates.TWD) : null;
-  }catch{}
+  // 自動抓取匯率
+  const url = 'https://script.google.com/macros/s/AKfycbx6jRRXCt3xgWVQBulc945UAe6nS1HtaxDVcvxixzYbNdDT7iY_nir4EzvRyGRtXA/exec';
+  try {
+    const res = await fetch(url, { cache: 'no-cache' });
+    const status = `HTTP ${res.status} ${res.statusText}`;
+    try {
+      const json = await res.json();
+      debugMsg += `自動抓取成功(JSON) — ${status}<br>`;
+      debugMsg += `回傳 JSON (前 800 字): <pre>${JSON.stringify(json).slice(0,800)}</pre><br>`;
+      const found = findRateInObj(json);
+      if (found) {
+        customRate = found;
+        debugMsg += `偵測到匯率: ${customRate}<br>`;
+      } else debugMsg += 'JSON 中未找到合理匯率<br>';
+    } catch {
+      const txt = await res.text();
+      debugMsg += `自動抓取成功(文字) — ${status}<br>`;
+      debugMsg += `回傳文字 (前 800 字): <pre>${txt.slice(0,800)}</pre><br>`;
+      const matches = txt.match(/([0-9]+(?:\.[0-9]+)?)/g);
+      if (matches) {
+        for (const m of matches) {
+          const v = parseFloat(m);
+          if (v>1 && v<200) { customRate = v; debugMsg += `擷取到匯率: ${customRate}<br>`; break; }
+        }
+      }
+    }
+  } catch (err) {
+    debugMsg += `自動抓取失敗：${err.message}<br>`;
+  }
 
-  const rateDisplay = rate ? rate.toFixed(3) : 'N/A';
-  const totalTwd = rate ? Math.ceil(totalUsd * rate) : 'N/A';
-  const today = new Date().toLocaleDateString();
+  let customRateDisplay = 'N/A';
+  let twdTotal = 'N/A';
+  if (Number.isFinite(customRate) && customRate > 0) {
+    const finalRate = customRate + 0.8;
+    customRateDisplay = finalRate.toFixed(3);
+    twdTotal = Math.ceil(usdTotalFloat * finalRate);
+  } else {
+    debugMsg += '未取得匯率，台幣顯示為 N/A<br>';
+  }
 
   // === 7. 結果輸出 ===
   out.innerHTML = `
@@ -115,3 +144,4 @@ async function calcTotal(){
 </script>
 </body>
 </html>
+
