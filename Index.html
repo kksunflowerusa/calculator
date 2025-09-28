@@ -1,147 +1,158 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>台灣→美國 運費計算機</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>B3運費計算機2</title>
 <style>
-  body {font-family: Arial, sans-serif; max-width: 720px; margin: 30px auto; padding: 20px;}
+  body {font-family: Arial,"Noto Sans TC",sans-serif; max-width:720px; margin:30px auto; padding:20px;}
   label {display:block; margin-top:12px;}
-  input[type="number"], input[type="text"] {width:100%; padding:8px; box-sizing:border-box; margin-top:4px;}
-  button {margin-top:16px; padding:10px 18px; font-size:16px; border-radius:8px;}
-  #result {margin-top:20px; padding:15px; border:1px solid #ccc; background:#f9f9f9;}
+  input[type="number"], input[type="text"] {width:100%; padding:8px; font-size:16px; box-sizing:border-box;}
+  button {margin-top:16px; padding:10px 18px; font-size:16px; border-radius:8px; cursor:pointer;}
+  .result {margin-top:20px; padding:16px; border-radius:8px; background:#f7f7f7;}
   .error {color:#b00020;}
+  .muted {color:#666; font-size:13px;}
 </style>
 </head>
 <body>
-<h2>台灣→美國 運費計算機</h2>
+<h2>B3運費計算機2</h2>
 
-<!-- 尺寸輸入 -->
-<label>長 (公分)：<input type="number" id="length" step="0.01"></label>
-<label>寬 (公分)：<input type="number" id="width"  step="0.01"></label>
-<label>高 (公分)：<input type="number" id="height" step="0.01"></label>
-<label>重量 (公斤)：<input type="number" id="weight" step="0.01"></label>
+<label>長度（公分）</label>
+<input id="lenCm" type="number" step="0.1" min="0.1" placeholder="例如 40" />
 
-<!-- 美國收件資訊 -->
-<label>美國收件 Zip code（5 位）：<input type="text" id="zip" maxlength="5"></label>
+<label>寬度（公分）</label>
+<input id="widCm" type="number" step="0.1" min="0.1" placeholder="例如 30" />
 
-<button onclick="calcTotal()">計算總運費</button>
+<label>高度（公分）</label>
+<input id="heiCm" type="number" step="0.1" min="0.1" placeholder="例如 20" />
 
-<div id="result"></div>
+<label>實際重量（公斤）</label>
+<input id="kg" type="number" step="0.1" min="0.1" placeholder="例如 5" />
+
+<label>美國收件 Zip code（5 位）</label>
+<input id="zip" type="text" maxlength="5" placeholder="例如 77084" />
+
+<button onclick="calcAll()">計算總運費</button>
+
+<div class="muted">計費依磅 (lb) 計算；尺寸將自動換算成英吋並取整。</div>
+<div id="output" class="result" style="display:none;"></div>
 
 <script>
-// === 1. 主要計算 ===
-async function calcTotal(){
-  const out = document.getElementById('result');
-  out.className = '';
-  out.innerHTML = '計算中…';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec'; // ←改成實際部署的 Apps Script URL
+const FX_URL  = 'https://script.google.com/macros/s/AKfycbx6jRRXCt3xgWVQBulc945UAe6nS1HtaxDVcvxixzYbNdDT7iY_nir4EzvRyGRtXA/exec'; // 抓取即時匯率
+const INTERNATIONAL_RATE = 3.99; // USD per lb
+const SERVICE_FEE_THRESHOLD = 20; // lb
+const SERVICE_FEE = 6; // USD
 
-  const lenCm = parseFloat(document.getElementById('length').value)||0;
-  const widCm = parseFloat(document.getElementById('width').value)||0;
-  const heiCm = parseFloat(document.getElementById('height').value)||0;
-  const kg    = parseFloat(document.getElementById('weight').value)||0;
-  const zip   = document.getElementById('zip').value.trim();
+function show(msg, isErr=false){
+  const out = document.getElementById('output');
+  out.style.display='block';
+  out.className = 'result' + (isErr?' error':'');
+  out.innerHTML = msg;
+}
+function ceil(n){ return Math.ceil(Number(n)); }
 
-  if(!zip || zip.length!==5 || !/^\d{5}$/.test(zip)){
-    out.innerHTML = '<span class="error">請輸入正確的 5 位數 Zip code。</span>';
-    return;
-  }
-  if(lenCm<=0||widCm<=0||heiCm<=0||kg<=0){
-    out.innerHTML = '<span class="error">請輸入正確的尺寸與重量。</span>';
-    return;
-  }
-
-  // === 2. 單位換算與材積重 ===
-  const lIn = Math.ceil(lenCm/2.54);
-  const wIn = Math.ceil(widCm/2.54);
-  const hIn = Math.ceil(heiCm/2.54);
-  const volumetricLb = Math.ceil((lIn * wIn * hIn) / 139);
-  const actualLb = Math.ceil(kg / 0.454);
-  const billableLb = Math.max(volumetricLb, actualLb);
-
-  // === 3. 國際運費 (台灣→美國) ===
-  let intlUsd = billableLb * 3.99;
-
-  // === 4. TW服務費 ===
-  const twService = (billableLb <= 20) ? 6 : 0;
-
-  // === 5. 美國國內運費 (呼叫 Google Apps Script) ===
-  const apiUrl = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec'
-               + `?zip=${encodeURIComponent(zip)}&weight=${billableLb}`;
-  let usDomesticUsd = 0;
-  try {
-    const resp = await fetch(apiUrl);
-    const data = await resp.json();
-    if(data.success){
-      usDomesticUsd = parseFloat(data.rate) || 0;
-    }else{
-      out.innerHTML = `<span class="error">查詢美國國內運費失敗：${data.message}</span>`;
-      return;
-    }
-  } catch(err){
-    out.innerHTML = `<span class="error">美國國內運費 API 發生錯誤：${err.message}</span>`;
-    return;
-  }
-
-  const totalUsd = intlUsd + twService + usDomesticUsd;
-
-  // === 6. 抓取匯率 (USD→TWD) ===
-  // 自動抓取匯率
-  const url = 'https://script.google.com/macros/s/AKfycbx6jRRXCt3xgWVQBulc945UAe6nS1HtaxDVcvxixzYbNdDT7iY_nir4EzvRyGRtXA/exec';
-  try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    const status = `HTTP ${res.status} ${res.statusText}`;
-    try {
-      const json = await res.json();
-      debugMsg += `自動抓取成功(JSON) — ${status}<br>`;
-      debugMsg += `回傳 JSON (前 800 字): <pre>${JSON.stringify(json).slice(0,800)}</pre><br>`;
-      const found = findRateInObj(json);
-      if (found) {
-        customRate = found;
-        debugMsg += `偵測到匯率: ${customRate}<br>`;
-      } else debugMsg += 'JSON 中未找到合理匯率<br>';
-    } catch {
-      const txt = await res.text();
-      debugMsg += `自動抓取成功(文字) — ${status}<br>`;
-      debugMsg += `回傳文字 (前 800 字): <pre>${txt.slice(0,800)}</pre><br>`;
-      const matches = txt.match(/([0-9]+(?:\.[0-9]+)?)/g);
-      if (matches) {
-        for (const m of matches) {
-          const v = parseFloat(m);
-          if (v>1 && v<200) { customRate = v; debugMsg += `擷取到匯率: ${customRate}<br>`; break; }
-        }
+// 嘗試從 JSON 物件中找出合理匯率
+function findRateInObj(obj) {
+  if (!obj) return null;
+  const keys = ['usdCashSell','usdSell','cashSell','sell','rate','exchangeRate','usd_to_twd','usdtotwd','usdToTwd','USDTWD','TWD','twd'];
+  for (const k of Object.keys(obj)) {
+    for (const c of keys) {
+      if (k.toLowerCase() === c.toLowerCase()) {
+        const v = parseFloat(obj[k]);
+        if (Number.isFinite(v) && v>1 && v<200) return v;
       }
     }
-  } catch (err) {
-    debugMsg += `自動抓取失敗：${err.message}<br>`;
+  }
+  if (obj.rates && obj.rates.TWD) {
+    const v = parseFloat(obj.rates.TWD);
+    if (Number.isFinite(v) && v>1 && v<200) return v;
+  }
+  return null;
+}
+
+async function calcAll(){
+  const len = Number(document.getElementById('lenCm').value);
+  const wid = Number(document.getElementById('widCm').value);
+  const hei = Number(document.getElementById('heiCm').value);
+  const kg  = Number(document.getElementById('kg').value);
+  const zip = document.getElementById('zip').value.trim();
+
+  if([len,wid,hei,kg].some(v=>!v || v<=0)){
+    show('請輸入正確的長寬高與重量（皆需大於 0）。',true); return;
+  }
+  if(!zip || zip.replace(/\D/g,'').length!==5){
+    show('請輸入 5 位數 Zip code。',true); return;
   }
 
-  let customRateDisplay = 'N/A';
-  let twdTotal = 'N/A';
-  if (Number.isFinite(customRate) && customRate > 0) {
-    const finalRate = customRate + 0.8;
-    customRateDisplay = finalRate.toFixed(3);
-    twdTotal = Math.ceil(usdTotalFloat * finalRate);
-  } else {
-    debugMsg += '未取得匯率，台幣顯示為 N/A<br>';
-  }
+  // ---- 1️⃣ 計算材積重與實際重量 ----
+  const lIn = ceil(len/2.54);
+  const wIn = ceil(wid/2.54);
+  const hIn = ceil(hei/2.54);
+  const volWeight = ceil((lIn * wIn * hIn)/139);
+  const realWeight = ceil(kg / 0.454);
+  const chargeWeight = Math.max(volWeight, realWeight);
 
-  // === 7. 結果輸出 ===
-  out.innerHTML = `
-    <strong>計算結果</strong><br>
-    尺寸(英吋)：${lIn} × ${wIn} × ${hIn}<br>
-    材積重：${volumetricLb} lb　實際重：${actualLb} lb<br>
-    計費重量：<strong>${billableLb} lb</strong><br><hr>
-    台灣→美國國際運費：$${intlUsd.toFixed(2)}<br>
-    TW服務費(≤20lb +$6)：$${twService.toFixed(2)}<br>
-    美國國內運費：$${usDomesticUsd.toFixed(2)}<br>
-    <strong>總運費：$${totalUsd.toFixed(2)} USD</strong><br><hr>
-    約合台幣：<strong>${ totalTwd==='N/A'?'N/A':('NT$'+totalTwd) }</strong><br>
-    使用匯率：1 USD = NT$${rateDisplay}<br>
-    今日日期：${today}
-  `;
+  const intlFee = chargeWeight * INTERNATIONAL_RATE;
+  const twFee = chargeWeight <= SERVICE_FEE_THRESHOLD ? SERVICE_FEE : 0;
+
+  show('計算中…');
+
+  try {
+    // 2️⃣ 取得美國國內運費
+    const resp = await fetch(`${API_URL}?zip=${encodeURIComponent(zip)}&weight=${chargeWeight}`);
+    const data = await resp.json();
+    if(!data.success) { show('國內運費錯誤：'+data.message,true); return; }
+
+    const usFee = parseFloat(String(data.rate).toString().replace(/[^\d.]/g,''));
+    if(isNaN(usFee)){ show('國內運費格式錯誤，請檢查試算表數據。',true); return; }
+
+    const totalUsd = intlFee + twFee + usFee;
+
+    // 3️⃣ 抓取即時台幣匯率並加 0.8
+    let twdRate = null;
+    try {
+      const fxResp = await fetch(FX_URL, {cache:'no-cache'});
+      const fxText = await fxResp.text();
+      let fxJson;
+      try { fxJson = JSON.parse(fxText); } catch {}
+      const baseRate = fxJson ? findRateInObj(fxJson) : (() => {
+        const m = fxText.match(/([0-9]+(?:\.[0-9]+)?)/g);
+        if (m) {
+          for (const x of m) {
+            const v = parseFloat(x);
+            if (v > 1 && v < 200) return v;
+          }
+        }
+        return null;
+      })();
+      if (baseRate) twdRate = baseRate + 0.8;
+    } catch(e){ console.error('匯率抓取失敗', e); }
+
+    const twdTotal = twdRate ? Math.ceil(totalUsd * twdRate) : 'N/A';
+    const rateDisplay = twdRate ? twdRate.toFixed(3) : 'N/A';
+    const today = new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit' });
+
+    // 4️⃣ 顯示結果
+    show(`
+      <strong>計算結果</strong><br/>
+      ──────────────<br/>
+      材積重：${volWeight} lb<br/>
+      實際重：${realWeight} lb<br/>
+      <b>計費磅數：${chargeWeight} lb</b><br/><br/>
+      1️⃣ 國際運費：$${intlFee.toFixed(2)}<br/>
+      2️⃣ TW 服務費(<=20磅)：$${twFee.toFixed(2)}<br/>
+      3️⃣ 美國國內運費：$${usFee.toFixed(2)}<br/>
+      ──────────────<br/>
+      <b>總運費：$${totalUsd.toFixed(2)}</b><br/><br/>
+      💰 以匯率計算：NT$${twdTotal}<br/>
+      使用匯率：1 USD = NT$${rateDisplay}<br/>
+      今日日期：${today}
+    `);
+  } catch(err){
+    show('發生錯誤：'+err,true);
+  }
 }
 </script>
 </body>
 </html>
-
