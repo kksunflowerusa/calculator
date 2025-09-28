@@ -2,178 +2,82 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>B3運費計算機</title>
 <style>
-  body {font-family: Arial, sans-serif; max-width: 760px; margin: 30px auto; padding: 20px;}
-  label {display:block; margin-top:12px;}
-  input[type="number"], input[type="text"] {width:100%; padding:8px; box-sizing:border-box;}
-  button {margin-top:16px; padding:10px 18px; font-size:16px;}
-  .status {margin-top:12px; color:#555;}
-  .result {margin-top:20px; font-weight:bold; line-height:1.5;}
-  .small {font-size:0.9em; color:#666;}
+  body {font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; padding: 20px;}
+  label {display:block; margin-top:10px;}
+  input[type="number"], input[type="text"] {width:100%; padding:8px;}
+  button {margin-top:20px; padding:10px 20px;}
+  #result {margin-top:20px; background:#f2f2f2; padding:15px; border-radius:8px;}
 </style>
 </head>
 <body>
 <h2>B3運費計算機</h2>
+<label>長(公分): <input type="number" id="lengthCm" step="0.1"></label>
+<label>寬(公分): <input type="number" id="widthCm" step="0.1"></label>
+<label>高(公分): <input type="number" id="heightCm" step="0.1"></label>
+<label>重量(公斤): <input type="number" id="weightKg" step="0.1"></label>
+<label>美國Zipcode: <input type="text" id="zipcode"></label>
+<button onclick="calc()">計算運費</button>
 
-<label>長 (cm): <input id="lengthCm" type="number" step="0.01"></label>
-<label>寬 (cm): <input id="widthCm" type="number" step="0.01"></label>
-<label>高 (cm): <input id="heightCm" type="number" step="0.01"></label>
-<label>重量 (kg): <input id="weightKg" type="number" step="0.01"></label>
-<label>美國 Zipcode (5 位數): <input id="zipcode" type="text" placeholder="例如 10001"></label>
-
-<button id="calcBtn" onclick="calc()">計算運費</button>
-<div class="status" id="status">狀態：尚未載入費率表。</div>
-<div class="result" id="result"></div>
+<div id="result"></div>
 
 <script>
-const GAS_ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbx06CQKBCGurtxzzKgycM-G-ZZIHUyl-6B361yagh8uIjjvi7j551W0od-Nnm7MtxXogg/exec';
+const webAppUrl = "https://script.google.com/macros/s/AKfycbzXfY99bFjCd1UF5Yn2jQ9jYDOwrSJC7F6vK36KvRuP3SfRGZcVRLj87Kw70My7G-1fxw/exec";
 
-// zipcode 區段對應 (與原始相同，可依需求維護)
-const zones = [
-  { start: 96701, end: 96898, zone: 'A1' },
-  { start: 96910, end: 96970, zone: 'B2' },
-  { start: 600,   end: 999,   zone: 'B2' },  // 00600–00999
-  { start: 99501, end: 99950, zone: 'B2' },
-  { start: 1001,  end: 5544,  zone: 'C3' },
-  { start: 2801,  end: 2940,  zone: 'C3' },
-  { start: 3031,  end: 3897,  zone: 'C3' },
-  { start: 3901,  end: 4992,  zone: 'C3' },
-  { start: 5001,  end: 5907,  zone: 'C3' },
-  { start: 6001,  end: 6928,  zone: 'C3' },
-  { start: 7001,  end: 8989,  zone: 'C3' },
-  { start: 98001, end: 99403, zone: 'C3' },
-  { start: 97001, end: 97920, zone: 'C3' },
-  { start: 90001, end: 96162, zone: 'D4' },
-  { start: 80001, end: 81658, zone: 'D4' },
-  { start: 82001, end: 83877, zone: 'D4' },
-  { start: 84001, end: 84791, zone: 'D4' },
-  { start: 88901, end: 89883, zone: 'D4' },
-  { start: 55001, end: 56763, zone: 'D4' },
-  { start: 57001, end: 57799, zone: 'D4' },
-  { start: 58001, end: 58856, zone: 'D4' },
-  { start: 59001, end: 59937, zone: 'D4' },
-  { start: 10001, end: 14925, zone: 'E5' },
-  { start: 15001, end: 19640, zone: 'E5' },
-  { start: 19701, end: 19980, zone: 'E5' },
-  { start: 50001, end: 52809, zone: 'F6' },
-  { start: 53001, end: 54990, zone: 'F6' },
-  { start: 20001, end: 20091, zone: 'F6' },
-  { start: 20101, end: 24658, zone: 'F6' },
-  { start: 20588, end: 21930, zone: 'F6' },
-  { start: 24701, end: 26886, zone: 'F6' },
-  { start: 43001, end: 45999, zone: 'F6' },
-  { start: 46001, end: 47997, zone: 'F6' },
-  { start: 48001, end: 49971, zone: 'F6' },
-  { start: 27006, end: 28909, zone: 'G7' },
-  { start: 29001, end: 29945, zone: 'G7' },
-  { start: 85001, end: 86556, zone: 'G7' },
-  { start: 87001, end: 88439, zone: 'G7' },
-  { start: 63001, end: 65899, zone: 'G7' },
-  { start: 68001, end: 69367, zone: 'G7' },
-  { start: 60001, end: 62999, zone: 'G7' },
-  { start: 66002, end: 67954, zone: 'G7' },
-  { start: 32003, end: 34997, zone: 'G7' },
-  { start: 30002, end: 39901, zone: 'G7' },
-  { start: 40003, end: 42788, zone: 'G7' },
-  { start: 70001, end: 71497, zone: 'H8' },
-  { start: 71601, end: 72959, zone: 'H8' },
-  { start: 73001, end: 74966, zone: 'H8' },
-  { start: 75001, end: 79999, zone: 'H8' },
-  { start: 88510, end: 88590, zone: 'H8' },
-  { start: 35004, end: 36925, zone: 'H8' },
-  { start: 37010, end: 38589, zone: 'H8' },
-  { start: 38601, end: 39776, zone: 'H8' }
-];
+function ceil(val){ return Math.ceil(val); }
 
-let ratesMap = {};
-let ratesLoaded = false;
+function calc(){
+  const lenCm = parseFloat(document.getElementById('lengthCm').value)||0;
+  const widCm = parseFloat(document.getElementById('widthCm').value)||0;
+  const heiCm = parseFloat(document.getElementById('heightCm').value)||0;
+  const wKg   = parseFloat(document.getElementById('weightKg').value)||0;
+  const zip   = document.getElementById('zipcode').value.trim();
 
-function findZone(zip) {
-  const m = (zip || '').trim().match(/^(\d{5})/);
-  if (!m) return null;
-  const z = parseInt(m[1], 10);
-  for (const r of zones) {
-    if (z >= r.start && z <= r.end) return r.zone;
-  }
-  return null;
-}
+  // 單位轉換
+  const lenIn = ceil(lenCm / 2.54);
+  const widIn = ceil(widCm / 2.54);
+  const heiIn = ceil(heiCm / 2.54);
+  const wLb   = ceil(wKg / 0.454);
 
-function getDomesticRate(zone, weight) {
-  const lbs = Math.ceil(weight);
-  if (!ratesMap[zone]) return null;
-  // 若超過最大磅數就取最高磅數的價格
-  if (ratesMap[zone][lbs]) return ratesMap[zone][lbs];
-  const pounds = Object.keys(ratesMap[zone]).map(Number).sort((a,b)=>a-b);
-  const maxPound = pounds[pounds.length-1];
-  return ratesMap[zone][lbs] || ratesMap[zone][maxPound];
-}
+  // 材積重
+  const dimWeight = ceil((lenIn * widIn * heiIn) / 139);
+  const billableWeight = Math.max(dimWeight, wLb);
 
-async function loadRates() {
-  if (ratesLoaded) return;
-  const statusDiv = document.getElementById('status');
-  statusDiv.textContent = '載入費率表中…';
-  try {
-    const resp = await fetch(GAS_ENDPOINT_URL);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    ratesMap = await resp.json();
-    ratesLoaded = true;
-    statusDiv.textContent = '費率表載入完成';
-  } catch (e) {
-    statusDiv.textContent = '載入費率表失敗：' + e.message;
-    throw e;
-  }
-}
+  const intlCost = billableWeight * 3.99;
+  const serviceFee = billableWeight <= 20 ? 6 : 0;
 
-async function calc() {
-  document.getElementById('calcBtn').disabled = true;
-  try {
-    await loadRates();
-  } catch { document.getElementById('calcBtn').disabled = false; return; }
+  // 先顯示國際部分
+  let html = `
+    實際重量: ${wLb} 磅<br>
+    材積重: ${dimWeight} 磅<br>
+    計費重量: ${billableWeight} 磅<br>
+    國際運費: $${intlCost.toFixed(2)}<br>
+    服務費(≤20磅): $${serviceFee}
+    <hr>
+    查詢美國國內運費中...
+  `;
+  document.getElementById('result').innerHTML = html;
 
-  const Lcm = parseFloat(document.getElementById('lengthCm').value);
-  const Wcm = parseFloat(document.getElementById('widthCm').value);
-  const Hcm = parseFloat(document.getElementById('heightCm').value);
-  const Wkg = parseFloat(document.getElementById('weightKg').value);
-  const zipcode = document.getElementById('zipcode').value.trim();
-
-  if ([Lcm,Wcm,Hcm,Wkg].some(v=>isNaN(v)||v<=0)||!zipcode){
-    alert('請輸入正確的長寬高、重量與 Zipcode');
-    document.getElementById('calcBtn').disabled = false;
-    return;
-  }
-
-  const L_in = Math.ceil(Lcm / 2.54);
-  const W_in = Math.ceil(Wcm / 2.54);
-  const H_in = Math.ceil(Hcm / 2.54);
-  const dimWeight = Math.ceil((L_in * W_in * H_in) / 139);
-  const realWeight = Math.ceil(Wkg / 0.454);
-  const chargeWeight = Math.max(dimWeight, realWeight);
-
-  const intlFee = chargeWeight * 3.99;
-  const serviceFee = (chargeWeight <= 20) ? 6 : 0;
-
-  const zone = findZone(zipcode);
-  const domestic = zone ? getDomesticRate(zone, chargeWeight) : null;
-
-  const resultDiv = document.getElementById('result');
-  if (!zone) {
-    resultDiv.textContent = '找不到對應分區，請確認 Zipcode';
-  } else if (domestic == null) {
-    resultDiv.innerHTML = `分區: ${zone}<br>計費重量: ${chargeWeight} lb<br>找不到對應費率`;
-  } else {
-    const total = intlFee + serviceFee + domestic;
-    resultDiv.innerHTML = `分區: ${zone}<br>
-      材積重: ${dimWeight} lb<br>
-      實際重: ${realWeight} lb<br>
-      計費重量: ${chargeWeight} lb<br>
-      國際運費: $${intlFee.toFixed(2)}<br>
-      服務費: $${serviceFee.toFixed(2)}<br>
-      美國國內運費: $${domestic.toFixed(2)}<br>
-      <hr><strong>總運費: $${total.toFixed(2)}</strong>`;
-  }
-  document.getElementById('calcBtn').disabled = false;
+  // 取得美國國內運費
+  fetch(`${webAppUrl}?zip=${zip}&weight=${billableWeight}`)
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.error){
+        document.getElementById('result').innerHTML += `<br>國內運費錯誤: ${data.error}`;
+      }else{
+        const total = intlCost + serviceFee + parseFloat(data.rate);
+        document.getElementById('result').innerHTML += `
+          分區: ${data.zone}<br>
+          美國國內運費: $${data.rate}<br>
+          <b>總運費: $${total.toFixed(2)}</b>
+        `;
+      }
+    })
+    .catch(err=>{
+      document.getElementById('result').innerHTML += `<br>取得國內運費失敗: ${err}`;
+    });
 }
 </script>
 </body>
