@@ -94,7 +94,6 @@ async function calcAll(){
     try{
       const fxResp = await fetch(FX_URL);
       const fxJson = await fxResp.json();
-      // 嘗試支援多種 key
       const keys = ['rate','Rate','usdToTwd','USDTWD','twd','TWD','usdClose'];
       for(const k of keys){
         if(fxJson[k]!==undefined){
@@ -105,7 +104,7 @@ async function calcAll(){
     }catch(e){ console.warn('抓匯率失敗',e); }
 
     const finalRate = fxRate ? (fxRate + 0.8) : null;
-    const totalTWD = finalRate ? Math.round(totalUSD * finalRate) : 'N/A';
+    const totalTWD = finalRate ? Math.ceil(totalUSD * finalRate) : 'N/A'; // ✅ 無條件進位
     const rateDisplay = finalRate ? finalRate.toFixed(3) : 'N/A';
 
     const today = new Date().toLocaleDateString('zh-TW');
@@ -133,4 +132,3 @@ async function calcAll(){
 </script>
 </body>
 </html>
-
