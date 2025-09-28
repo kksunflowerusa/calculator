@@ -109,7 +109,7 @@ document.getElementById('calcForm').addEventListener('submit', async function(e)
            <strong>服務費：</strong>$${serviceFee.toFixed(2)}<br/>`;
 
   // 呼叫 Apps Script 查分區 + 磅數對應的美國國內運費
-  const GAS_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwEFMmo7MoFC8Xw_Z5DIfnnKd-2S18H1R0ySAVM8kG7_q_X4yGXViwBcCnba79TlOONsw/exec';
   const url = GAS_URL + `?zone=${zone}&billingWeight=${billingWeight}`;
 
   try {
@@ -138,3 +138,4 @@ document.getElementById('calcForm').addEventListener('submit', async function(e)
 </script>
 </body>
 </html>
+
