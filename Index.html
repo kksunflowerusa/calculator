@@ -87,12 +87,12 @@ async function calcAll(){
     const usFee = parseFloat(String(json.rate).replace(/[^\d.]/g,''));
     if(isNaN(usFee)){ show('國內運費格式錯誤。',true); return; }
 
-    // 取得分區資訊，假設 Apps Script 回傳 key 名稱為 "zone"
+    // 取得分區資訊
     const zone = json.zone ? json.zone : '未知分區';
 
     const totalUSD = intlFee + twFee + usFee;
 
-    // 從 Apps Script 抓匯率
+    // 抓匯率
     let fxRate = null;
     try{
       const fxResp = await fetch(FX_URL);
@@ -113,20 +113,21 @@ async function calcAll(){
     const today = new Date().toLocaleDateString('zh-TW');
 
     show(`
-      <strong>計算結果</strong><br/>
+      <strong>B3運費報價</strong><br/>
       ──────────────<br/>
+      📦 換算尺寸：${lIn} × ${wIn} × ${hIn} in
       材積重：${volWeight} lb<br/>
       實際重：${realWeight} lb<br/>
       <b>計費磅數：${chargeWeight} lb</b><br/><br/>
       1️⃣ 國際運費：$${intlFee.toFixed(2)}<br/>
-      2️⃣ TW 服務費(<=20lb)：$${twFee.toFixed(2)}<br/>
+      2️⃣ TW 服務費(未超過20lbs)：$${twFee.toFixed(2)}<br/>
       3️⃣ 美國國內運費：$${usFee.toFixed(2)}<br/>
       📍 分區：${zone}<br/>
       ──────────────<br/>
       <b>總運費：$${totalUSD.toFixed(2)}</b><br/><br/>
       💱 台幣總金額：約 NT$${totalTWD}<br/>
       使用匯率：1 USD = NT$${rateDisplay}<br/>
-      今日日期：${today}
+      今日日期：${today}<br/><br/>
     `);
 
   } catch(err){
