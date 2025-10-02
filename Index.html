@@ -90,7 +90,7 @@ function renderPackageInputs() {
         <label>寬 (公分)：<input type="number" id="width${i}" step="0.01"></label>
         <label>高 (公分)：<input type="number" id="height${i}" step="0.01"></label>
         <label>重量 (公斤)：<input type="number" id="weight${i}" step="0.01"></label>
-        <label>折扣 (%)：
+        <label>折扣%-(若95折Key上95，若9折Key上90，以此類推)：
           <div class="inline">
             <input type="number" id="discount${i}" value="100" step="1" min="1">
             <button type="button" onclick="applyDiscountAll(${i})">全部套用折扣</button>
@@ -199,3 +199,4 @@ async function calculate() {
 </script>
 </body>
 </html>
+
