@@ -18,7 +18,7 @@
 <body>
 <h2>B3 多件包裹運費計算機</h2>
 
-<label>美國收件 Zip code（5 位）</label>
+<label>美國收件 Zip code（5位數）</label>
 <input id="zip" type="text" maxlength="5" placeholder="例如 77084" />
 
 <div id="packages"></div>
@@ -127,9 +127,9 @@ async function calcAll(){
       details += `
       <div style="margin-bottom:12px;">
         <b>包裹 #${id}</b><br>
-        尺寸：${lIn}×${wIn}×${hIn} in<br>
+        換算尺寸：${lIn}×${wIn}×${hIn} in<br>
         材積重：${volWeight} lb｜實際重：${realWeight} lb｜計費：${chargeWeight} lb<br>
-        國際運費：$${intlFee.toFixed(2)} ｜ TW服務費：$${twFee.toFixed(2)} ｜ 國內：$${usFee.toFixed(2)}<br>
+        國際運費：$${intlFee.toFixed(2)} ｜ TW服務費(未超過20lbs)：$${twFee.toFixed(2)} ｜ 美國國內運費：$${usFee.toFixed(2)}<br>
         小計：<b>$${total.toFixed(2)}</b><br>
       </div>`;
     }
@@ -174,3 +174,4 @@ async function calcAll(){
 </script>
 </body>
 </html>
+
