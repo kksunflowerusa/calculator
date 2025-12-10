@@ -19,7 +19,7 @@
     text-align: center;
     width: 90%;
     max-width: 400px;
-    margin: 0 auto; /* 水平置中 */
+    margin: 0 auto;
   }
   h2 {
     margin: 0 0 16px 0;
@@ -69,13 +69,6 @@
     height: 200px;
     object-fit: contain;
   }
-  .logo-bottom {
-    display: block;
-    margin: 20px auto 0;
-    width: 400px;
-    height: 400px;
-    object-fit: contain;
-  }
 </style>
 </head>
 <body>
@@ -107,14 +100,10 @@
 
   <input id="order" type="text" placeholder="請輸入訂單號" />
   <button id="btn">查詢</button>
+
   <div id="description">請先選擇資料來源，再輸入訂單號並按「查詢」</div>
   <div id="result"></div>
   <div id="statusDesc"></div>
-
-  <!-- 表單下方圖片 -->
-  <img src="https://kksunflowerusa.github.io/carrier/Carrier.png"
-       alt="物流圖片"
-       class="logo-bottom">
 
 </div>
 
@@ -178,7 +167,3 @@ inputEl.addEventListener('keyup', e => { if(e.key === 'Enter') checkOrder(); });
 </script>
 </body>
 </html>
-
-
-
-
