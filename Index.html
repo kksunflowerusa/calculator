@@ -69,7 +69,7 @@
 
 <body>
 <div class="container">
-  <h2>訂單查詢</h2>
+  <h2>集運到貨狀態查詢</h2>
 
   <label>選擇來源表單</label>
   <select id="source">
@@ -80,7 +80,7 @@
   </select>
 
   <label>輸入訂單號碼</label>
-  <input type="text" id="orderNo" placeholder="請輸入訂單號碼">
+  <input type="text" id="orderNo" placeholder="請輸入訂單號碼" oninput="this.value = this.value.toUpperCase();">
 
   <button onclick="queryOrder()">查詢</button>
 
@@ -90,7 +90,7 @@
 <script>
 function queryOrder() {
   const source = document.getElementById("source").value;
-  const orderNo = document.getElementById("orderNo").value.trim();
+  const orderNo = document.getElementById("orderNo").value.trim().toUpperCase();
   const resultBox = document.getElementById("resultBox");
 
   if (!source) {
@@ -102,18 +102,15 @@ function queryOrder() {
     return;
   }
 
-  const url = `https://script.google.com/macros/s/AKfycbzQ7_k6R5oV3DpZz38-4-z2y-5D66D_cjgBSTEmMuo-g7SlgFr79xxVFRrb6gisa14/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
+  const url = `https://script.google.com/macros/s/AKfycbxkLco51R6ZgIagaiToa9Y71DWVpudKU5SU_XqI903w4pk7EqZi_HtfmjUcCEZzMgpj/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
 
   fetch(url)
     .then(res => res.json())
     .then(data => {
       resultBox.style.display = "block";
-
-      if (data.status === "success") {
-        resultBox.textContent = "查詢結果：\n" + data.content;
-      } else {
-        resultBox.textContent = "錯誤：" + data.message;
-      }
+      resultBox.textContent = data.status === "success"
+        ? "查詢結果：\n" + data.content
+        : "錯誤：" + data.message;
     })
     .catch(err => {
       resultBox.style.display = "block";
