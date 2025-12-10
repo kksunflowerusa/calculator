@@ -1,68 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
+<base target="_top"> <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>集運狀態查詢系統</title>
+<title>集運訂單查詢</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-    padding: 20px;
-  }
-  .container {
-    max-width: 500px;
-    background: white;
-    margin: 0 auto;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  }
-  h2 {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  label {
-    font-weight: bold;
-    margin-top: 10px;
-    display: block;
-  }
-  select, input {
-    width: 100%;
-    padding: 12px;
-    margin-top: 5px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-  }
-  button {
-    width: 100%;
-    margin-top: 15px;
-    padding: 12px;
-    background: #2563eb;
-    border: none;
-    color: white;
-    font-size: 16px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  button:hover {
-    background: #1e40af;
-  }
-  #resultBox {
-    margin-top: 20px;
-    padding: 15px;
-    background: #eef2ff;
-    border-left: 4px solid #2563eb;
-    display: none;
-    white-space: pre-wrap;
-  }
+  body { font-family: '微軟正黑體', Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+  .container { max-width: 500px; margin: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);}
+  h2 { text-align:center; margin-bottom:20px; color:#333; }
+  label { display:block; margin-top:10px; font-weight:bold; color:#555; }
+  select, input { width:100%; padding:12px; margin-top:5px; border-radius:8px; border:1px solid #ccc; box-sizing: border-box; }
+  button { width:100%; padding:12px; margin-top:15px; background:#2563eb; color:white; font-size:16px; border:none; border-radius:8px; cursor:pointer; transition: background 0.3s; }
+  button:hover { background:#1e40af; }
+  #resultBox { margin-top:20px; padding:15px; background:#eef2ff; border-left:4px solid #2563eb; display:none; white-space:pre-wrap; border-radius: 8px; }
+  .error { background:#fee2e2; border-left-color:#dc2626; color:#dc2626; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h2>集運到貨查詢1</h2>
-
-  <label>選擇來源表單</label>
+  <h2>集運訂單查詢</h2>
+  <label for="source">選擇來源表單</label>
   <select id="source">
     <option value="">請選擇</option>
     <option value="B3">B3</option>
@@ -70,7 +27,7 @@
     <option value="C2-DE">C2-DE</option>
   </select>
 
-  <label>輸入訂單號碼</label>
+  <label for="orderNo">輸入訂單號碼</label>
   <input type="text" id="orderNo" placeholder="請輸入訂單號碼">
 
   <button onclick="queryOrder()">查詢</button>
@@ -79,36 +36,74 @@
 </div>
 
 <script>
+/**
+ * 成功處理 Apps Script 回傳結果的處理函式
+ * @param {object} data - 從 Apps Script 傳回的物件 {status: ..., content: ...}
+ */
+function handleSuccess(data) {
+  const resultBox = document.getElementById("resultBox");
+  resultBox.style.display = "block";
+  resultBox.classList.remove('error'); // 清除可能的錯誤樣式
+
+  if (data.status === "success") {
+    resultBox.textContent = "✅ 查詢結果：\n" + data.content;
+  } else {
+    resultBox.textContent = "❌ 錯誤：" + data.message;
+    resultBox.classList.add('error'); // 添加錯誤樣式
+  }
+}
+
+/**
+ * 處理 Apps Script 執行失敗或異常的處理函式
+ * @param {Error} error - 錯誤物件
+ */
+function handleFailure(error) {
+  const resultBox = document.getElementById("resultBox");
+  resultBox.style.display = "block";
+  resultBox.classList.add('error');
+  resultBox.textContent = "🚨 發生伺服器錯誤：" + error.message;
+}
+
+/**
+ * 觸發查詢的函式
+ */
 function queryOrder() {
   const source = document.getElementById("source").value;
-  const orderNo = document.getElementById("orderNo").value.trim().toUpperCase();
+  const orderNo = document.getElementById("orderNo").value.trim();
   const resultBox = document.getElementById("resultBox");
+  resultBox.style.display = "none"; // 查詢前隱藏結果
 
-  if (!source) {
-    alert("請選擇來源表單");
-    return;
+  if (!source) { 
+    resultBox.textContent = "⚠️ 請選擇來源表單";
+    resultBox.style.display = "block";
+    resultBox.classList.add('error');
+    return; 
   }
-  if (!orderNo) {
-    alert("請輸入訂單號碼");
-    return;
+  if (!orderNo) { 
+    resultBox.textContent = "⚠️ 請輸入訂單號碼";
+    resultBox.style.display = "block";
+    resultBox.classList.add('error');
+    return; 
   }
 
-  const url = `https://script.google.com/macros/s/AKfycbyH0djDWO0b2_HJ94kBtoF-2995J8tJelJKyGE83PlBrSg5oIFU_nt50qlIYsi8b7AP/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
+  // 禁用按鈕防止重複提交
+  const button = document.querySelector('button');
+  button.disabled = true;
+  button.textContent = '查詢中...';
 
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      resultBox.style.display = "block";
-      if (data.status === "success") {
-        resultBox.textContent = "查詢結果：\n" + data.content;
-      } else {
-        resultBox.textContent = "錯誤：" + data.message;
-      }
+  // 使用 google.script.run 呼叫伺服器端函式
+  google.script.run
+    .withSuccessHandler(function(data) {
+        handleSuccess(data);
+        button.disabled = false;
+        button.textContent = '查詢';
     })
-    .catch(err => {
-      resultBox.style.display = "block";
-      resultBox.textContent = "發生錯誤：" + err;
-    });
+    .withFailureHandler(function(error) {
+        handleFailure(error);
+        button.disabled = false;
+        button.textContent = '查詢';
+    })
+    .queryOrderData(source, orderNo); // 呼叫 Apps Script 的 queryOrderData 函式
 }
 </script>
 </body>
