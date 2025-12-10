@@ -4,14 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>集運狀態查詢系統</title>
-
 <style>
   body {
     font-family: Arial, sans-serif;
     background: #f4f4f4;
     padding: 20px;
   }
-
   .container {
     max-width: 500px;
     background: white;
@@ -20,18 +18,15 @@
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
   }
-
   h2 {
     text-align: center;
     margin-bottom: 20px;
   }
-
   label {
     font-weight: bold;
     margin-top: 10px;
     display: block;
   }
-
   select, input {
     width: 100%;
     padding: 12px;
@@ -39,7 +34,6 @@
     border-radius: 8px;
     border: 1px solid #ccc;
   }
-
   button {
     width: 100%;
     margin-top: 15px;
@@ -51,11 +45,9 @@
     border-radius: 8px;
     cursor: pointer;
   }
-
   button:hover {
     background: #1e40af;
   }
-
   #resultBox {
     margin-top: 20px;
     padding: 15px;
@@ -66,10 +58,9 @@
   }
 </style>
 </head>
-
 <body>
 <div class="container">
-  <h2>集運到貨狀態查詢4</h2>
+  <h2>集運到貨查詢1</h2>
 
   <label>選擇來源表單</label>
   <select id="source">
@@ -80,7 +71,7 @@
   </select>
 
   <label>輸入訂單號碼</label>
-  <input type="text" id="orderNo" placeholder="請輸入訂單號碼" oninput="this.value = this.value.toUpperCase();">
+  <input type="text" id="orderNo" placeholder="請輸入訂單號碼">
 
   <button onclick="queryOrder()">查詢</button>
 
@@ -102,15 +93,17 @@ function queryOrder() {
     return;
   }
 
-  const url = `https://script.google.com/macros/s/AKfycbzfJ7tbmQ3n0bAEkDmpN4PD3hDBI_1WzSX8KcUGvU08dXVvTDdUNQ6YLKCftca1FmX2/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
+  const url = `https://script.google.com/macros/s/AKfycbyH0djDWO0b2_HJ94kBtoF-2995J8tJelJKyGE83PlBrSg5oIFU_nt50qlIYsi8b7AP/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
 
   fetch(url)
     .then(res => res.json())
     .then(data => {
       resultBox.style.display = "block";
-      resultBox.textContent = data.status === "success"
-        ? "查詢結果：\n" + data.content
-        : "錯誤：" + data.message;
+      if (data.status === "success") {
+        resultBox.textContent = "查詢結果：\n" + data.content;
+      } else {
+        resultBox.textContent = "錯誤：" + data.message;
+      }
     })
     .catch(err => {
       resultBox.style.display = "block";
@@ -118,11 +111,5 @@ function queryOrder() {
     });
 }
 </script>
-
 </body>
 </html>
-
-
-
-
-
