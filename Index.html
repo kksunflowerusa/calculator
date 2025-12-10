@@ -43,7 +43,7 @@ function queryOrder() {
   if (!source) { alert("請選擇來源表單"); return; }
   if (!orderNo) { alert("請輸入訂單號碼"); return; }
 
-  const url = `https://script.google.com/macros/s/AKfycbzL_zpvCeaOj1TrGcH1cBqV-2ENlDoKQVRcLQLMN_uyWh5Yr8tPOWfZKFDAFHA1qzqd/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
+  const url = `https://script.google.com/macros/s/AKfycby_Y21ew3ElRawdeukJJc-CtRZe5jqfNl7FYKqJxmhzCi0jP4NQo8jUwFucmBN1Ju8/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
 
   fetch(url)
     .then(res => res.json())
@@ -63,4 +63,5 @@ function queryOrder() {
 </script>
 </body>
 </html>
+
 
