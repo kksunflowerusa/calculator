@@ -1,177 +1,184 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>B3多件包裹運費計算機</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KK Sunflower 國際物流訂單查詢</title>
 <style>
-  body {font-family: Arial,"Noto Sans TC",sans-serif; max-width:760px; margin:30px auto; padding:20px;}
-  label {display:block; margin-top:12px;}
-  input[type="number"], input[type="text"] {width:100%; padding:8px; font-size:16px; box-sizing:border-box;}
-  button {margin-top:12px; padding:10px 18px; font-size:16px; border-radius:8px; cursor:pointer;}
-  .result {margin-top:20px; padding:16px; border-radius:8px; background:#f7f7f7;}
-  .error {color:#b00020;}
-  .pkg {border:1px solid #ccc; padding:12px; margin-top:12px; border-radius:8px; background:#fafafa;}
-  .muted {color:#666; font-size:13px;}
+  body {
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    padding: 20px 0;
+  }
+  .container {
+    background: #fff;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+    margin: 0 auto; /* 水平置中 */
+  }
+  h2 {
+    margin: 0 0 16px 0;
+    font-size: 20px;
+  }
+  select, input[type="text"], button {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  button {
+    border: none;
+    background: #4CAF50;
+    color: #fff;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #45a049;
+  }
+  #description {
+    font-size: 14px;
+    color: #555;
+    margin-top: 12px;
+  }
+  #result {
+    margin-top: 20px;
+    padding: 12px;
+    background: #f4f4f4;
+    border-radius: 6px;
+    font-weight: bold;
+  }
+  #statusDesc {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #333;
+    text-align: left;
+    white-space: pre-line;
+  }
+  .logo {
+    display: block;
+    margin: 0 auto 20px;
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+  }
+  .logo-bottom {
+    display: block;
+    margin: 20px auto 0;
+    width: 400px;
+    height: 400px;
+    object-fit: contain;
+  }
 </style>
 </head>
 <body>
-<h2>B3 多件包裹運費計算機</h2>
+<div class="container">
 
-<label>美國收件 Zip code（5位數）</label>
-<input id="zip" type="text" maxlength="5" placeholder="例如 77084" />
+  <!-- 表單上方圖片 -->
+  <img src="https://kksunflowerusa.github.io/logo/KK%20logo.png"
+       alt="物流圖片"
+       class="logo">
 
-<div id="packages"></div>
-<button onclick="addPackage()">＋ 新增包裹</button>
+  <h2>KK Sunflower 國際物流<br>訂單狀態查詢</h2>
 
-<button onclick="calcAll()">計算所有包裹總運費</button>
+  <!-- 資料來源選擇 -->
+  <select id="source">
+    <option value="">--請選擇資料來源--</option>
+    <option value="A1">A1</option>
+    <option value="A1-A">A1-A</option>
+    <option value="A2">A2</option>
+    <option value="A2-A">A2-A</option>
+    <option value="A3">A3</option>
+    <option value="A3-A">A3-A</option>
+    <option value="A4">A4</option>
+    <option value="B2">B2</option>
+    <option value="B3">B3</option>
+    <option value="B5">B5</option>
+    <option value="C2">C2</option>
+    <option value="C2-DE">C2-DE</option>
+  </select>
 
-<div class="muted">計費依磅 (lb) 計算；尺寸將自動換算成英吋並取整。</div>
-<div id="output" class="result" style="display:none;"></div>
+  <input id="order" type="text" placeholder="請輸入訂單號" />
+  <button id="btn">查詢</button>
+  <div id="description">請先選擇資料來源，再輸入訂單號並按「查詢」</div>
+  <div id="result"></div>
+  <div id="statusDesc"></div>
+
+  <!-- 表單下方圖片 -->
+  <img src="https://kksunflowerusa.github.io/carrier/Carrier.png"
+       alt="物流圖片"
+       class="logo-bottom">
+
+</div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec';
-const FX_URL  = 'https://script.google.com/macros/s/AKfycbxIiNX4edi5eqyMPKnCnj0sohXVM9R2PtzRDSParjSHuLlT2eLwY8CQRJMzFVGsKWzq/exec';
-const INTERNATIONAL_RATE = 4.69;
-const SERVICE_FEE_THRESHOLD = 20;
-const SERVICE_FEE = 6;
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtOLTAfDgSmjjddoVJGxmmk0_pBJL38OkiEfv4rFZDKL2d8VuNyAuK87s-5Tia7xLS/exec';
 
-function ceil(n){ return Math.ceil(Number(n)); }
+// 狀態說明對照表
+const statusMap = {
+  "新訂單": "新成立訂單",
+  "宅配通物流取件已安排": "表示已經委派台灣物流去取件",
+  "新竹物流取件已安排": "表示已經委派台灣物流去取件",
+  "包裹抵達轉運站": "表示訂單已全部抵達轉運站",
+  "包裹自行寄往轉運站": "表示訂單由客戶端自行寄到TW轉運站",
+  "包裹等待整併中": "表示訂單仍在等待重新打包",
+  "台灣寄往美國中": "表示訂單已從台灣寄出，尚未抵達美國",
+  "包裹抵達美國": "表示訂單已抵達美國轉運站，等待寄出",
+  "美國國內轉運寄出": "表示訂單已從美國轉運站寄出前往收件地址",
+  "訂單已完成": "表示訂單已全部完成",
+  "訂單已取消": "表示訂單已取消",
+  "訂單已更改": "表示訂單已更改表單",
+  "訂單尚未更新": "目前尚無更新資訊"
+};
 
-function show(msg, isErr=false){
-  const out = document.getElementById('output');
-  out.style.display='block';
-  out.className = 'result' + (isErr?' error':'');
-  out.innerHTML = msg;
-}
+const sourceEl = document.getElementById('source');
+const inputEl = document.getElementById('order');
+const btnEl = document.getElementById('btn');
+const resultEl = document.getElementById('result');
+const descEl = document.getElementById('description');
+const statusDescEl = document.getElementById('statusDesc');
 
-// === 動態包裹輸入區 ===
-let pkgCount = 0;
-function addPackage(){
-  pkgCount++;
-  const div = document.createElement('div');
-  div.className = 'pkg';
-  div.id = `pkg${pkgCount}`;
-  div.innerHTML = `
-    <h4>包裹 #${pkgCount}</h4>
-    <label>長度（公分）</label>
-    <input type="number" step="0.1" min="0.1" id="len${pkgCount}" placeholder="例如 40">
-    <label>寬度（公分）</label>
-    <input type="number" step="0.1" min="0.1" id="wid${pkgCount}" placeholder="例如 30">
-    <label>高度（公分）</label>
-    <input type="number" step="0.1" min="0.1" id="hei${pkgCount}" placeholder="例如 20">
-    <label>重量（公斤）</label>
-    <input type="number" step="0.1" min="0.1" id="kg${pkgCount}" placeholder="例如 5">
-    <button onclick="removePackage(${pkgCount})" style="background:#eee; margin-top:8px;">刪除此包裹</button>
-  `;
-  document.getElementById('packages').appendChild(div);
-}
-
-function removePackage(id){
-  const el = document.getElementById(`pkg${id}`);
-  if(el) el.remove();
-}
-
-// 預設顯示一筆
-addPackage();
-
-async function calcAll(){
-  const zip = document.getElementById('zip').value.trim();
-  if(!zip || zip.replace(/\D/g,'').length!==5){
-    show('請輸入 5 位數 Zip code。',true); return;
+function checkOrder() {
+  const order = inputEl.value.trim();
+  const source = sourceEl.value;
+  if (!source || !order) {
+    resultEl.textContent = '';
+    statusDescEl.textContent = '';
+    descEl.textContent = '請選擇資料來源並輸入訂單號';
+    return;
   }
 
-  const pkgElems = document.querySelectorAll('.pkg');
-  if(pkgElems.length === 0){ show('請至少新增一個包裹。',true); return; }
+  descEl.textContent = '';
+  resultEl.textContent = '查詢中…';
+  statusDescEl.textContent = '';
 
-  show('計算中…');
-
-  let totalUSD = 0, totalLb = 0, details = '';
-  let zoneSummary = null;
-
-  try {
-    for(let i=0;i<pkgElems.length;i++){
-      const id = pkgElems[i].id.replace('pkg','');
-      const len = Number(document.getElementById('len'+id).value);
-      const wid = Number(document.getElementById('wid'+id).value);
-      const hei = Number(document.getElementById('hei'+id).value);
-      const kg  = Number(document.getElementById('kg'+id).value);
-      if([len,wid,hei,kg].some(v=>!v || v<=0)){
-        show(`包裹 #${id} 的長寬高或重量輸入錯誤。`,true); return;
-      }
-
-      const lIn = ceil(len/2.54);
-      const wIn = ceil(wid/2.54);
-      const hIn = ceil(hei/2.54);
-      const volWeight = ceil((lIn*wIn*hIn)/139);
-      const realWeight = ceil(kg/0.454);
-      const chargeWeight = Math.max(volWeight, realWeight);
-
-      // 國際+台灣費
-      const intlFee = chargeWeight * INTERNATIONAL_RATE;
-      const twFee = chargeWeight <= SERVICE_FEE_THRESHOLD ? SERVICE_FEE : 0;
-
-      // 美國國內費
-      const resp = await fetch(`${API_URL}?zip=${encodeURIComponent(zip)}&weight=${chargeWeight}`);
-      const json = await resp.json();
-      if(!json.success){ show('國內運費錯誤：'+json.message,true); return; }
-
-      const usFee = parseFloat(String(json.rate).replace(/[^\d.]/g,'')) || 0;
-      const zone = json.zone || '未知分區';
-      if(!zoneSummary) zoneSummary = zone;
-
-      const total = intlFee + twFee + usFee;
-      totalUSD += total;
-      totalLb += chargeWeight;
-
-      details += `
-      <div style="margin-bottom:12px;">
-        <b>包裹 #${id}</b><br>
-        換算尺寸：${lIn}×${wIn}×${hIn} in<br>
-        材積重：${volWeight} lb｜實際重：${realWeight} lb｜計費：${chargeWeight} lb<br>
-        國際運費：$${intlFee.toFixed(2)} ｜ TW服務費(未超過20lbs)：$${twFee.toFixed(2)} ｜ 美國國內運費：$${usFee.toFixed(2)}<br>
-        小計：<b>$${total.toFixed(2)}</b><br>
-      </div>`;
-    }
-
-    // 匯率
-    let fxRate = null;
-    try{
-      const fxResp = await fetch(FX_URL);
-      const fxJson = await fxResp.json();
-      const keys = ['rate','Rate','usdToTwd','USDTWD','twd','TWD','usdClose'];
-      for(const k of keys){
-        if(fxJson[k]!==undefined){
-          fxRate = parseFloat(fxJson[k]);
-          if(!isNaN(fxRate)) break;
-        }
-      }
-    }catch(e){ console.warn('抓匯率失敗',e); }
-
-    const finalRate = fxRate ? (fxRate + 0.8) : null;
-    const totalTWD = finalRate ? Math.ceil(totalUSD * finalRate) : 'N/A';
-    const rateDisplay = finalRate ? finalRate.toFixed(3) : 'N/A';
-    const today = new Date().toLocaleDateString('zh-TW');
-
-    show(`
-      <strong>B3 運費總報價</strong><br/>
-      ──────────────<br/>
-      ${details}
-      <hr>
-      <b>📦 包裹總數：</b> ${pkgElems.length}<br>
-      <b>總計磅數：</b> ${totalLb} lb<br>
-      <b>總運費：</b> $${totalUSD.toFixed(2)} USD<br>
-      分區：${zoneSummary}<br><br>
-      💱 台幣總金額：約 NT$${totalTWD}<br>
-      使用匯率：1 USD = NT$${rateDisplay}<br>
-      今日日期：${today}<br>
-    `);
-
-  } catch(err){
-    show('發生錯誤：'+err,true);
-  }
+  fetch(`${SCRIPT_URL}?source=${encodeURIComponent(source)}&order=${encodeURIComponent(order)}`)
+    .then(r => r.text())
+    .then(txt => {
+      const st = txt.trim() || "訂單尚未更新";
+      resultEl.textContent = `狀態：${st}`;
+      statusDescEl.textContent = statusMap[st] || "無對應說明";
+    })
+    .catch(err => {
+      console.error(err);
+      resultEl.textContent = '查詢失敗，請稍後再試';
+      statusDescEl.textContent = '';
+    });
 }
+
+btnEl.addEventListener('click', checkOrder);
+inputEl.addEventListener('keyup', e => { if(e.key === 'Enter') checkOrder(); });
 </script>
 </body>
 </html>
+
+
+
 
