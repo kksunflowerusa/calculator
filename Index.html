@@ -55,6 +55,7 @@
     border-radius: 6px;
     font-weight: bold;
     white-space: pre-line;
+    text-align: left; /* ⭐ 向左對齊 */
   }
   .logo {
     display: block;
@@ -72,7 +73,7 @@
        alt="物流圖片"
        class="logo">
 
-  <h2>KK Sunflower 國際物流<br>集運到貨查詢2</h2>
+  <h2>KK Sunflower 國際物流<br>集運到貨查詢</h2>
 
   <select id="source">
     <option value="">--請選擇資料來源--</option>
@@ -112,7 +113,7 @@ function checkOrder() {
   resultEl.textContent = '查詢中…';
 
   fetch(`${SCRIPT_URL}?source=${encodeURIComponent(source)}&order=${encodeURIComponent(order)}`)
-    .then(r => r.json())  // ⭐ 解析 JSON
+    .then(r => r.json())
     .then(data => {
       if (data.status === "success") {
         resultEl.textContent = data.content;
@@ -131,6 +132,3 @@ inputEl.addEventListener('keyup', e => { if (e.key === 'Enter') checkOrder(); })
 </script>
 </body>
 </html>
-
-
-
