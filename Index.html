@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>集運狀態查詢系統</title>
 <style>
-  body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+  body { font-family: Arial; background: #f4f4f4; padding: 20px; }
   .container { max-width: 500px; background: white; margin: 0 auto; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
   h2 { text-align: center; margin-bottom: 20px; }
   label { font-weight: bold; margin-top: 10px; display: block; }
@@ -17,7 +17,7 @@
 </head>
 <body>
 <div class="container">
-  <h2>集運到貨查詢3</h2>
+  <h2>集運到貨查詢1</h2>
   <label>選擇來源表單</label>
   <select id="source">
     <option value="">請選擇</option>
@@ -25,25 +25,22 @@
     <option value="C2">C2</option>
     <option value="C2-DE">C2-DE</option>
   </select>
-
   <label>輸入訂單號碼</label>
   <input type="text" id="orderNo" placeholder="請輸入訂單號碼">
-
   <button onclick="queryOrder()">查詢</button>
-
   <div id="resultBox"></div>
 </div>
 
 <script>
 function queryOrder() {
   const source = document.getElementById("source").value;
-  const orderNo = document.getElementById("orderNo").value.trim();
+  const orderNo = document.getElementById("orderNo").value.trim().toUpperCase();
   const resultBox = document.getElementById("resultBox");
 
   if (!source) { alert("請選擇來源表單"); return; }
   if (!orderNo) { alert("請輸入訂單號碼"); return; }
 
-  const url = `https://script.google.com/macros/s/AKfycbyigNSU28QfW-aiQbAq-mgGLmd8nKR-wL91BRfmAckkoDPS7_MGwQdCgaOP2bRlc04p/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
+  const url = `https://script.google.com/macros/s/AKfycbzQ7_k6R5oV3DpZz38-4-z2y-5D66D_cjgBSTEmMuo-g7SlgFr79xxVFRrb6gisa14/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
 
   fetch(url)
     .then(res => res.json())
@@ -63,4 +60,3 @@ function queryOrder() {
 </script>
 </body>
 </html>
-
