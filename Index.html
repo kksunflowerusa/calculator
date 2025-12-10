@@ -17,7 +17,7 @@
 </head>
 <body>
 <div class="container">
-  <h2>集運到貨查詢1</h2>
+  <h2>集運到貨查詢2</h2>
   <label>選擇來源表單</label>
   <select id="source">
     <option value="">請選擇</option>
@@ -40,7 +40,7 @@ function queryOrder() {
   if (!source) { alert("請選擇來源表單"); return; }
   if (!orderNo) { alert("請輸入訂單號碼"); return; }
 
-  const url = `https://script.google.com/macros/s/AKfycbzQ7_k6R5oV3DpZz38-4-z2y-5D66D_cjgBSTEmMuo-g7SlgFr79xxVFRrb6gisa14/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
+  const url = `https://script.google.com/macros/s/AKfycbxhSzQx6LM5YaC55eowxJJ0emQ3I2Bz9pg8D72ZeYV5iqP6htjjqmnmnTGFblyLWb4J/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
 
   fetch(url)
     .then(res => res.json())
@@ -60,3 +60,4 @@ function queryOrder() {
 </script>
 </body>
 </html>
+
