@@ -69,7 +69,7 @@
 
 <body>
 <div class="container">
-  <h2>集運到貨狀態查詢</h2>
+  <h2>集運到貨狀態查詢3</h2>
 
   <label>選擇來源表單</label>
   <select id="source">
@@ -102,7 +102,7 @@ function queryOrder() {
     return;
   }
 
-  const url = `https://script.google.com/macros/s/AKfycbwFFLSXMgX8bKb_m57Yshd4L8H-gXv8BDfNtFgdfCfuzTQYZWTw3G2O9eN4bhut9vMM/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
+  const url = `https://script.google.com/macros/s/AKfycbzaJ8jYHTnjvNdEQNS3UaWAQ93gIvVeG7Gh0ozNzqFT2kOLtqBmsJVHFMZj90jjBVvN/exec?source=${encodeURIComponent(source)}&order=${encodeURIComponent(orderNo)}`;
 
   fetch(url)
     .then(res => res.json())
@@ -121,6 +121,7 @@ function queryOrder() {
 
 </body>
 </html>
+
 
 
 
