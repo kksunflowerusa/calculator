@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KK Sunflower 國際物流訂單查詢</title>
+<title>KK Sunflower 國際物流訂單到貨狀態查詢</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -54,12 +54,6 @@
     background: #f4f4f4;
     border-radius: 6px;
     font-weight: bold;
-  }
-  #statusDesc {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #333;
-    text-align: left;
     white-space: pre-line;
   }
   .logo {
@@ -94,68 +88,45 @@
 
   <div id="description">請先選擇資料來源，再輸入訂單號並按「查詢」</div>
   <div id="result"></div>
-  <div id="statusDesc"></div>
 
 </div>
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwtOLTAfDgSmjjddoVJGxmmk0_pBJL38OkiEfv4rFZDKL2d8VuNyAuK87s-5Tia7xLS/exec';
 
-// 狀態說明對照表
-const statusMap = {
-  "新訂單": "新成立訂單",
-  "宅配通物流取件已安排": "表示已經委派台灣物流去取件",
-  "新竹物流取件已安排": "表示已經委派台灣物流去取件",
-  "包裹抵達轉運站": "表示訂單已全部抵達轉運站",
-  "包裹自行寄往轉運站": "表示訂單由客戶端自行寄到TW轉運站",
-  "包裹等待整併中": "表示訂單仍在等待重新打包",
-  "台灣寄往美國中": "表示訂單已從台灣寄出，尚未抵達美國",
-  "包裹抵達美國": "表示訂單已抵達美國轉運站，等待寄出",
-  "美國國內轉運寄出": "表示訂單已從美國轉運站寄出前往收件地址",
-  "訂單已完成": "表示訂單已全部完成",
-  "訂單已取消": "表示訂單已取消",
-  "訂單已更改": "表示訂單已更改表單",
-  "訂單尚未更新": "目前尚無更新資訊"
-};
-
 const sourceEl = document.getElementById('source');
 const inputEl = document.getElementById('order');
 const btnEl = document.getElementById('btn');
 const resultEl = document.getElementById('result');
 const descEl = document.getElementById('description');
-const statusDescEl = document.getElementById('statusDesc');
 
 function checkOrder() {
   const order = inputEl.value.trim();
   const source = sourceEl.value;
+
   if (!source || !order) {
     resultEl.textContent = '';
-    statusDescEl.textContent = '';
     descEl.textContent = '請選擇資料來源並輸入訂單號';
     return;
   }
 
   descEl.textContent = '';
   resultEl.textContent = '查詢中…';
-  statusDescEl.textContent = '';
 
   fetch(`${SCRIPT_URL}?source=${encodeURIComponent(source)}&order=${encodeURIComponent(order)}`)
     .then(r => r.text())
     .then(txt => {
-      const st = txt.trim() || "訂單尚未更新";
-      resultEl.textContent = `狀態：${st}`;
-      statusDescEl.textContent = statusMap[st] || "無對應說明";
+      const msg = txt.trim();
+      resultEl.textContent = msg ? msg : "查無資料";
     })
     .catch(err => {
       console.error(err);
       resultEl.textContent = '查詢失敗，請稍後再試';
-      statusDescEl.textContent = '';
     });
 }
 
 btnEl.addEventListener('click', checkOrder);
-inputEl.addEventListener('keyup', e => { if(e.key === 'Enter') checkOrder(); });
+inputEl.addEventListener('keyup', e => { if (e.key === 'Enter') checkOrder(); });
 </script>
 </body>
 </html>
-
