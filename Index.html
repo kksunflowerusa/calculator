@@ -1,134 +1,142 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KK Sunflower 國際物流集運到貨查詢</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>B4運費計算器</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f0f2f5;
-    margin: 0;
-    padding: 20px 0;
-  }
-  .container {
-    background: #fff;
-    padding: 40px 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    text-align: center;
-    width: 90%;
-    max-width: 400px;
-    margin: 0 auto;
-  }
-  h2 {
-    margin: 0 0 16px 0;
-    font-size: 20px;
-  }
-  select, input[type="text"], button {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 12px;
-    font-size: 16px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-  }
-  button {
-    border: none;
-    background: #4CAF50;
-    color: #fff;
-    cursor: pointer;
-  }
-  button:hover {
-    background: #45a049;
-  }
-  #description {
-    font-size: 14px;
-    color: #555;
-    margin-top: 12px;
-  }
-  #result {
-    margin-top: 20px;
-    padding: 12px;
-    background: #f4f4f4;
-    border-radius: 6px;
-    font-weight: bold;
-    white-space: pre-line;
-    text-align: left; /* ⭐ 向左對齊 */
-  }
-  .logo {
-    display: block;
-    margin: 0 auto 20px;
-    width: 200px;
-    height: 200px;
-    object-fit: contain;
-  }
+  body {font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 20px;}
+  label {display:block; margin-top:10px;}
+  input[type="number"] {margin-top:5px; padding:6px; width:100%;}
+  button {margin-top:15px; padding:8px 15px;}
+  #packages {margin-top:20px;}
+  .pkg-block {border:1px solid #ccc; padding:15px; margin-top:15px; background:#f9f9f9;}
+  #output {margin-top:20px; padding:12px; border:1px solid #ccc; background:#f9f9f9;}
 </style>
 </head>
 <body>
-<div class="container">
 
-  <img src="https://kksunflowerusa.github.io/logo/KK%20logo.png"
-       alt="物流圖片"
-       class="logo">
+<h2>B4運費計算器</h2>
 
-  <h2>KK Sunflower 國際物流<br>集運到貨查詢</h2>
+<label>件數：
+  <input type="number" id="packageCount" value="1" min="1" step="1" onchange="renderPackageInputs()">
+</label>
 
-  <select id="source">
-    <option value="">--請選擇資料來源--</option>
-    <option value="B3">B3</option>
-    <option value="C2">C2</option>
-    <option value="C2-DE">C2-DE</option>
-  </select>
-
-  <input id="order" type="text" placeholder="請輸入訂單號" />
-  <button id="btn">查詢</button>
-
-  <div id="description">請先選擇資料來源，再輸入訂單號並按「查詢」</div>
-  <div id="result"></div>
-
-</div>
+<div id="packages"></div>
+<button onclick="calculate()">計算金額</button>
+<div id="output"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxFT1rUSn5hGl7HMRjgQSD5k4mb6ePBAhapDy2MD2nwcNYHttE0XZrmRlDd7emwPAA_/exec';
-
-const sourceEl = document.getElementById('source');
-const inputEl = document.getElementById('order');
-const btnEl = document.getElementById('btn');
-const resultEl = document.getElementById('result');
-const descEl = document.getElementById('description');
-
-function checkOrder() {
-  const order = inputEl.value.trim();
-  const source = sourceEl.value;
-
-  if (!source || !order) {
-    resultEl.textContent = '';
-    descEl.textContent = '請選擇資料來源並輸入訂單號';
-    return;
-  }
-
-  descEl.textContent = '';
-  resultEl.textContent = '查詢中…';
-
-  fetch(`${SCRIPT_URL}?source=${encodeURIComponent(source)}&order=${encodeURIComponent(order)}`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === "success") {
-        resultEl.textContent = data.content;
-      } else {
-        resultEl.textContent = data.message || "查詢失敗";
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      resultEl.textContent = '查詢失敗，請稍後再試';
-    });
+function parseNumberLoose(v){
+  const n = parseFloat(String(v).replace(/[^\d.\-]/g,''));
+  return Number.isFinite(n) ? n : NaN;
 }
 
-btnEl.addEventListener('click', checkOrder);
-inputEl.addEventListener('keyup', e => { if (e.key === 'Enter') checkOrder(); });
+function findRateInObj(obj){
+  if(!obj) return null;
+  const recur = (o,d=0)=>{
+    if(d>6||!o) return null;
+    if(typeof o==='number'&&o>1&&o<200) return o;
+    if(typeof o==='string'){
+      const n=parseNumberLoose(o);
+      if(n>1&&n<200) return n;
+    }
+    if(Array.isArray(o)){
+      for(const x of o){ const r=recur(x,d+1); if(r) return r; }
+    }else if(typeof o==='object'){
+      for(const k in o){ const r=recur(o[k],d+1); if(r) return r; }
+    }
+    return null;
+  };
+  return recur(obj,0);
+}
+
+function renderPackageInputs(){
+  const c = +document.getElementById('packageCount').value || 1;
+  const box = document.getElementById('packages');
+  box.innerHTML='';
+  for(let i=1;i<=c;i++){
+    box.innerHTML+=`
+      <div class="pkg-block">
+        <strong>第 ${i} 件</strong>
+        <label>長 (cm)：<input type="number" id="l${i}" step="0.01"></label>
+        <label>寬 (cm)：<input type="number" id="w${i}" step="0.01"></label>
+        <label>高 (cm)：<input type="number" id="h${i}" step="0.01"></label>
+        <label>重量 (kg)：<input type="number" id="kg${i}" step="0.01"></label>
+      </div>`;
+  }
+}
+renderPackageInputs();
+
+async function calculate(){
+  const count = +packageCount.value || 1;
+  let rate=null;
+
+  try{
+    const r = await fetch('https://script.google.com/macros/s/AKfycbx6jRRXCt3xgWVQBulc945UAe6nS1HtaxDVcvxixzYbNdDT7iY_nir4EzvRyGRtXA/exec');
+    rate = findRateInObj(await r.json());
+  }catch{}
+
+  const finalRate = rate ? rate + 0.8 : null;
+
+  let packages=[];
+  let totalLb=0;
+
+  for(let i=1;i<=count;i++){
+    const L=Math.ceil((+document.getElementById(`l${i}`).value||0)/2.54);
+    const W=Math.ceil((+document.getElementById(`w${i}`).value||0)/2.54);
+    const H=Math.ceil((+document.getElementById(`h${i}`).value||0)/2.54);
+    const kg=+document.getElementById(`kg${i}`).value||0;
+
+    const volLb=Math.ceil((L*W*H)/139);
+    const actLb=Math.ceil(kg/0.454);
+    const chgLb=Math.max(volLb,actLb);
+
+    totalLb+=chgLb;
+    packages.push({i,L,W,H,volLb,actLb,chgLb});
+  }
+
+  let续磅价=null;
+  if(totalLb<50){
+    output.innerHTML=`<div class="pkg-block"><strong>合併重量 ${totalLb} 磅</strong><br>請聯絡客服人員</div>`;
+    return;
+  }else if(totalLb<160){
+    续磅价=6.49;
+  }else{
+    续磅价=5.99;
+  }
+
+  let html='',totalUsd=0;
+  packages.forEach(p=>{
+    const usd=30+(p.chgLb>1?(p.chgLb-1)*续磅价:0);
+    totalUsd+=usd;
+    const twd=finalRate?Math.ceil(usd*finalRate):'N/A';
+    html+=`
+      <div class="pkg-block">
+        <strong>第 ${p.i} 件</strong><br>
+        尺寸：${p.L}×${p.W}×${p.H} in<br>
+        材積重：${p.volLb} lb<br>
+        實重：${p.actLb} lb<br>
+        計費重：${p.chgLb} lb<br>
+        金額：$${usd.toFixed(2)} / NT$${twd}
+      </div>`;
+  });
+
+  const pickup=count*5;
+  const totalAll=totalUsd+pickup;
+  const totalTwd=finalRate?Math.ceil(totalAll*finalRate):'N/A';
+
+  html+=`
+    <div class="pkg-block" style="border-top:2px solid #000">
+      <strong>B4運費報價</strong><br>
+      合併重量：${totalLb} 磅<br>
+      續磅單價：$${续磅价}<br>
+      取件費：$${pickup.toFixed(2)}<br>
+      總金額：$${totalAll.toFixed(2)} / NT$${totalTwd}<br>
+      匯率：${finalRate?finalRate.toFixed(3):'N/A'}
+    </div>`;
+  output.innerHTML=html;
+}
 </script>
 </body>
 </html>
