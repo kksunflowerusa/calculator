@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>B4運費計算器</title>
+
 <style>
   body {font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 20px;}
   label {display:block; margin-top:10px;}
@@ -11,19 +12,25 @@
   button {margin-top:15px; padding:8px 15px;}
   #packages {margin-top:20px;}
   .pkg-block {border:1px solid #ccc; padding:15px; margin-top:15px; background:#f9f9f9;}
-  #output {margin-top:20px; padding:12px; border:1px solid #ccc; background:#f9f9f9;}
 </style>
 </head>
+
 <body>
 
-<h2>B4運費計算器</h2>
+<h2>B4 運費計算器</h2>
 
 <label>件數：
   <input type="number" id="packageCount" value="1" min="1" step="1" onchange="renderPackageInputs()">
 </label>
 
+<label>會員折扣（例：95折 = 0.95）：
+  <input type="number" id="discountRate" value="1" step="0.01">
+</label>
+
 <div id="packages"></div>
+
 <button onclick="calculate()">計算金額</button>
+
 <div id="output"></div>
 
 <script>
@@ -70,8 +77,9 @@ renderPackageInputs();
 
 async function calculate(){
   const count = +packageCount.value || 1;
-  let rate=null;
+  const discount = parseFloat(document.getElementById('discountRate').value) || 1;
 
+  let rate=null;
   try{
     const r = await fetch('https://script.google.com/macros/s/AKfycbx6jRRXCt3xgWVQBulc945UAe6nS1HtaxDVcvxixzYbNdDT7iY_nir4EzvRyGRtXA/exec');
     rate = findRateInObj(await r.json());
@@ -96,7 +104,7 @@ async function calculate(){
     packages.push({i,L,W,H,volLb,actLb,chgLb});
   }
 
-  let续磅价=null;
+  let 续磅价=null;
   if(totalLb<50){
     output.innerHTML=`<div class="pkg-block"><strong>合併重量 ${totalLb} 磅</strong><br>請聯絡客服人員</div>`;
     return;
@@ -106,37 +114,52 @@ async function calculate(){
     续磅价=5.99;
   }
 
-  let html='',totalUsd=0;
+  let html='';
+  let totalBeforeDiscount=0;
+  let totalAfterDiscount=0;
+
   packages.forEach(p=>{
-    const usd=30+(p.chgLb>1?(p.chgLb-1)*续磅价:0);
-    totalUsd+=usd;
-    const twd=finalRate?Math.ceil(usd*finalRate):'N/A';
-    html+=`
+    const base = 30 + (p.chgLb > 1 ? (p.chgLb - 1) * 续磅价 : 0);
+    const discounted = base * discount;
+
+    totalBeforeDiscount += base;
+    totalAfterDiscount += discounted;
+
+    const twdBefore = finalRate ? Math.ceil(base * finalRate) : 'N/A';
+    const twdAfter = finalRate ? Math.ceil(discounted * finalRate) : 'N/A';
+
+    html += `
       <div class="pkg-block">
         <strong>第 ${p.i} 件</strong><br>
-        尺寸：${p.L}×${p.W}×${p.H} in<br>
+        尺寸：${p.L} × ${p.W} × ${p.H} in<br>
         材積重：${p.volLb} lb<br>
         實重：${p.actLb} lb<br>
         計費重：${p.chgLb} lb<br>
-        金額：$${usd.toFixed(2)} / NT$${twd}
+        原始運費：$${base.toFixed(2)} / NT$${twdBefore}<br>
+        折扣後運費：$${discounted.toFixed(2)} / NT$${twdAfter}
       </div>`;
   });
 
-  const pickup=count*5;
-  const totalAll=totalUsd+pickup;
-  const totalTwd=finalRate?Math.ceil(totalAll*finalRate):'N/A';
+  const pickup = count * 5;
+  const totalFinal = totalAfterDiscount + pickup;
+  const totalTwd = finalRate ? Math.ceil(totalFinal * finalRate) : 'N/A';
 
-  html+=`
+  html += `
     <div class="pkg-block" style="border-top:2px solid #000">
-      <strong>B4運費報價</strong><br>
+      <strong>B4 運費總計</strong><br>
       合併重量：${totalLb} 磅<br>
       續磅單價：$${续磅价}<br>
+      折扣前運費合計：$${totalBeforeDiscount.toFixed(2)}<br>
+      折扣後運費合計：$${totalAfterDiscount.toFixed(2)}<br>
       取件費：$${pickup.toFixed(2)}<br>
-      總金額：$${totalAll.toFixed(2)} / NT$${totalTwd}<br>
-      匯率：${finalRate?finalRate.toFixed(3):'N/A'}
-    </div>`;
-  output.innerHTML=html;
+      <strong>應付總額：$${totalFinal.toFixed(2)} / NT$${totalTwd}</strong><br>
+      匯率：${finalRate ? finalRate.toFixed(3) : 'N/A'}
+    </div>
+  `;
+
+  output.innerHTML = html;
 }
 </script>
+
 </body>
 </html>
