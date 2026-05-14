@@ -15,6 +15,7 @@
   .package-box {border:1px solid #ddd; padding:12px; margin-top:15px; background:#fff;}
   .package-result {border:1px solid #ccc; padding:10px; margin-top:12px; background:#fff;}
   .total-box {border:2px solid #333; padding:12px; margin-top:15px; background:#fff;}
+  .surcharge {color:#b00020; font-weight:bold;}
 </style>
 </head>
 <body>
@@ -27,7 +28,7 @@
 <label>會員折扣：
   <input type="number" id="discountRate" step="0.01" min="0" value="1" placeholder="例如 95 折請輸入 0.95">
 </label>
-<div class="small">折扣只套用每磅 $4.99 的部分；每磅 $1.2 美國國內運費不折扣。</div>
+<div class="small">折扣只套用每磅 $4.99 的部分；每磅 $1.2 美國國內運費與附加費不折扣。</div>
 
 <div id="packages"></div>
 
@@ -115,6 +116,7 @@ async function calculate() {
 
   let totalBeforeDiscountUsd = 0;
   let totalAfterDiscountUsd = 0;
+  let totalSurchargeUsd = 0;
   let resultHtml = '';
   let debugMsg = '';
 
@@ -128,6 +130,12 @@ async function calculate() {
     const lengthIn = Math.ceil(lengthCm / 2.54);
     const widthIn  = Math.ceil(widthCm / 2.54);
     const heightIn = Math.ceil(heightCm / 2.54);
+
+    const sides = [lengthIn, widthIn, heightIn].sort((a, b) => b - a);
+    const longestSide = sides[0];
+    const secondLongestSide = sides[1];
+    const shortestSide = sides[2];
+    const lengthPlusGirth = longestSide + 2 * secondLongestSide + 2 * shortestSide;
 
     const volumetricLb = Math.ceil((lengthIn * widthIn * heightIn) / 139);
     const actualLb = Math.ceil(weightKg / 0.454);
@@ -148,30 +156,92 @@ async function calculate() {
       twServiceFeeText = 'TW 服務費 = $6';
     }
 
-    const packageBeforeDiscount = internationalBeforeDiscount + usDomesticFee + twServiceFee + innerBoxFee;
-    const packageAfterDiscount = internationalAfterDiscount + usDomesticFee + twServiceFee + innerBoxFee;
+    let dimensionSurcharge = 0;
+    let oversizeSurcharge = 0;
+    let weightSurcharge = 0;
+    let surchargeDetails = '';
+
+    if (
+      longestSide > 46 ||
+      secondLongestSide > 28 ||
+      lengthPlusGirth > 100
+    ) {
+      dimensionSurcharge = 35;
+      surchargeDetails += `
+        <span class="surcharge">額外服務附加費 – 尺寸：$35</span><br>
+        觸發條件：最長邊 ${longestSide} in、第二長邊 ${secondLongestSide} in、長度加周長 ${lengthPlusGirth} in<br>
+      `;
+    }
+
+    if (
+      longestSide > 90 ||
+      lengthPlusGirth > 120
+    ) {
+      oversizeSurcharge = 85;
+      surchargeDetails += `
+        <span class="surcharge">超大尺寸費用：$85</span><br>
+        觸發條件：最長邊 ${longestSide} in、長度加周長 ${lengthPlusGirth} in<br>
+      `;
+    }
+
+    if (chargeableLb >= 50) {
+      weightSurcharge = 35;
+      surchargeDetails += `
+        <span class="surcharge">額外服務附加費 – 重量：$35</span><br>
+        觸發條件：計費重量 ${chargeableLb} lb 達 50 lb 以上<br>
+      `;
+    }
+
+    if (!surchargeDetails) {
+      surchargeDetails = '無附加費<br>';
+    }
+
+    const packageSurcharge = dimensionSurcharge + oversizeSurcharge + weightSurcharge;
+
+    const packageBeforeDiscountWithoutSurcharge =
+      internationalBeforeDiscount + usDomesticFee + twServiceFee + innerBoxFee;
+
+    const packageAfterDiscountWithoutSurcharge =
+      internationalAfterDiscount + usDomesticFee + twServiceFee + innerBoxFee;
+
+    const packageBeforeDiscount =
+      packageBeforeDiscountWithoutSurcharge + packageSurcharge;
+
+    const packageAfterDiscount =
+      packageAfterDiscountWithoutSurcharge + packageSurcharge;
 
     totalBeforeDiscountUsd += packageBeforeDiscount;
     totalAfterDiscountUsd += packageAfterDiscount;
+    totalSurchargeUsd += packageSurcharge;
 
     resultHtml += `
       <div class="package-result">
         <h3>包裹 ${i} 計算結果</h3>
         轉換後尺寸：${lengthIn} × ${widthIn} × ${heightIn} 英寸<br>
+        最長邊：${longestSide} 英寸<br>
+        第二長邊：${secondLongestSide} 英寸<br>
+        長度加周長：${longestSide} + 2 × ${secondLongestSide} + 2 × ${shortestSide} = ${lengthPlusGirth} 英寸<br>
         材積重：${volumetricLb} 磅<br>
         外箱實際重：${actualLb} 磅<br>
         計費重量：${chargeableLb} 磅<br>
         內箱件數：${innerCount} 件<br>
+
         <hr>
-        <b>明細計算方式：</b><br>
+        <b>基本明細計算方式：</b><br>
         折扣前 $4.99 運費：${chargeableLb} × $4.99 = $${internationalBeforeDiscount.toFixed(2)}<br>
         折扣後 $4.99 運費：$${internationalBeforeDiscount.toFixed(2)} × ${finalDiscountRate} = $${internationalAfterDiscount.toFixed(2)}<br>
         美國國內運費：${chargeableLb} × $1.2 = $${usDomesticFee.toFixed(2)}<br>
         ${twServiceFeeText}<br>
         內箱服務費：${innerCount} × $6 = $${innerBoxFee.toFixed(2)}<br>
+
         <hr>
-        包裹 ${i} 折扣前金額：$${packageBeforeDiscount.toFixed(2)} 美元<br>
-        包裹 ${i} 折扣後金額：$${packageAfterDiscount.toFixed(2)} 美元<br>
+        <b>附加費明細：</b><br>
+        ${surchargeDetails}
+        附加費小計：$${packageSurcharge.toFixed(2)}<br>
+
+        <hr>
+        包裹 ${i} 折扣前金額：$${packageBeforeDiscountWithoutSurcharge.toFixed(2)} + 附加費 $${packageSurcharge.toFixed(2)} = $${packageBeforeDiscount.toFixed(2)} 美元<br>
+        包裹 ${i} 折扣後金額：$${packageAfterDiscountWithoutSurcharge.toFixed(2)} + 附加費 $${packageSurcharge.toFixed(2)} = $${packageAfterDiscount.toFixed(2)} 美元<br>
       </div>
     `;
   }
@@ -233,6 +303,8 @@ async function calculate() {
     <div class="total-box">
       <h3>加總運費</h3>
       會員折扣：${finalDiscountRate}<br>
+      附加費總額：$${totalSurchargeUsd.toFixed(2)} 美元<br>
+      <hr>
       折扣前總金額：$${totalBeforeDiscountUsd.toFixed(2)} 美元<br>
       折扣後總金額：$${totalAfterDiscountUsd.toFixed(2)} 美元<br>
       <hr>
