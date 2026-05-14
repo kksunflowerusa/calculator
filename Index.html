@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>B4運費計算器</title>
+<title>B4運費計算器2</title>
 
 <style>
   body {font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 20px;}
   label {display:block; margin-top:10px;}
-  input[type="number"] {margin-top:5px; padding:6px; width:100%;}
+  input[type="number"], select {margin-top:5px; padding:6px; width:100%; box-sizing:border-box;}
   button {margin-top:15px; padding:8px 15px;}
   #packages {margin-top:20px;}
   .pkg-block {border:1px solid #ccc; padding:15px; margin-top:15px; background:#f9f9f9;}
@@ -18,7 +18,7 @@
 
 <body>
 
-<h2>B4 運費計算器</h2>
+<h2>B4 運費計算器2</h2>
 
 <label>件數：
   <input type="number" id="packageCount" value="1" min="1" step="1" onchange="renderPackageInputs()">
@@ -63,17 +63,43 @@ function renderPackageInputs(){
   const c = +document.getElementById('packageCount').value || 1;
   const box = document.getElementById('packages');
   box.innerHTML='';
+
   for(let i=1;i<=c;i++){
     box.innerHTML+=`
       <div class="pkg-block">
         <strong>第 ${i} 件</strong>
-        <label>長 (cm)：<input type="number" id="l${i}" step="0.01"></label>
-        <label>寬 (cm)：<input type="number" id="w${i}" step="0.01"></label>
-        <label>高 (cm)：<input type="number" id="h${i}" step="0.01"></label>
-        <label>重量 (kg)：<input type="number" id="kg${i}" step="0.01"></label>
+
+        <label>輸入單位：
+          <select id="unit${i}" onchange="updateUnitLabels(${i})">
+            <option value="cmkg">公分 + 公斤</option>
+            <option value="inlb">英寸 + 磅</option>
+          </select>
+        </label>
+
+        <label id="labelL${i}">長 (cm)：<input type="number" id="l${i}" step="0.01"></label>
+        <label id="labelW${i}">寬 (cm)：<input type="number" id="w${i}" step="0.01"></label>
+        <label id="labelH${i}">高 (cm)：<input type="number" id="h${i}" step="0.01"></label>
+        <label id="labelWeight${i}">重量 (kg)：<input type="number" id="kg${i}" step="0.01"></label>
       </div>`;
   }
 }
+
+function updateUnitLabels(i){
+  const unit = document.getElementById(`unit${i}`).value;
+
+  if(unit === 'cmkg'){
+    document.getElementById(`labelL${i}`).innerHTML = `長 (cm)：<input type="number" id="l${i}" step="0.01">`;
+    document.getElementById(`labelW${i}`).innerHTML = `寬 (cm)：<input type="number" id="w${i}" step="0.01">`;
+    document.getElementById(`labelH${i}`).innerHTML = `高 (cm)：<input type="number" id="h${i}" step="0.01">`;
+    document.getElementById(`labelWeight${i}`).innerHTML = `重量 (kg)：<input type="number" id="kg${i}" step="0.01">`;
+  }else{
+    document.getElementById(`labelL${i}`).innerHTML = `長 (in)：<input type="number" id="l${i}" step="0.01">`;
+    document.getElementById(`labelW${i}`).innerHTML = `寬 (in)：<input type="number" id="w${i}" step="0.01">`;
+    document.getElementById(`labelH${i}`).innerHTML = `高 (in)：<input type="number" id="h${i}" step="0.01">`;
+    document.getElementById(`labelWeight${i}`).innerHTML = `重量 (lb)：<input type="number" id="kg${i}" step="0.01">`;
+  }
+}
+
 renderPackageInputs();
 
 async function calculate(){
@@ -92,14 +118,29 @@ async function calculate(){
   let totalLb=0;
 
   for(let i=1;i<=count;i++){
-    const L=Math.ceil((+document.getElementById(`l${i}`).value||0)/2.54);
-    const W=Math.ceil((+document.getElementById(`w${i}`).value||0)/2.54);
-    const H=Math.ceil((+document.getElementById(`h${i}`).value||0)/2.54);
-    const kg=+document.getElementById(`kg${i}`).value||0;
+    const unit = document.getElementById(`unit${i}`).value;
 
-    const volLb=Math.ceil((L*W*H)/139);
-    const actLb=Math.ceil(kg/0.454);
-    const chgLb=Math.max(volLb,actLb);
+    const inputL = +document.getElementById(`l${i}`).value || 0;
+    const inputW = +document.getElementById(`w${i}`).value || 0;
+    const inputH = +document.getElementById(`h${i}`).value || 0;
+    const inputWeight = +document.getElementById(`kg${i}`).value || 0;
+
+    let L, W, H, actLb;
+
+    if(unit === 'cmkg'){
+      L = Math.ceil(inputL / 2.54);
+      W = Math.ceil(inputW / 2.54);
+      H = Math.ceil(inputH / 2.54);
+      actLb = Math.ceil(inputWeight / 0.454);
+    }else{
+      L = Math.ceil(inputL);
+      W = Math.ceil(inputW);
+      H = Math.ceil(inputH);
+      actLb = Math.ceil(inputWeight);
+    }
+
+    const volLb = Math.ceil((L * W * H) / 139);
+    const chgLb = Math.max(volLb, actLb);
 
     const sides=[L,W,H].sort((a,b)=>b-a);
     const longest=sides[0];
@@ -134,20 +175,23 @@ async function calculate(){
     const surchargeTotal=dimensionSurcharge + oversizeSurcharge + weightSurcharge;
 
     totalLb+=chgLb;
+
     packages.push({
       i,L,W,H,volLb,actLb,chgLb,
       longest,second,shortest,lengthPlusGirth,
-      surchargeText,surchargeTotal
+      surchargeText,surchargeTotal,
+      unit
     });
   }
 
-  let 续磅价=null;
+  let extraLbRate=null;
+
   if(totalLb<50){
-    续磅价=7;
+    extraLbRate=7;
   }else if(totalLb<160){
-    续磅价=6.49;
+    extraLbRate=6.49;
   }else{
-    续磅价=5.99;
+    extraLbRate=5.99;
   }
 
   let html='';
@@ -156,7 +200,7 @@ async function calculate(){
   let totalSurcharge=0;
 
   packages.forEach(p=>{
-    const base = 30 + (p.chgLb > 1 ? (p.chgLb - 1) * 续磅价 : 0);
+    const base = 30 + (p.chgLb > 1 ? (p.chgLb - 1) * extraLbRate : 0);
     const discounted = base * discount;
 
     totalBeforeDiscount += base;
@@ -169,6 +213,7 @@ async function calculate(){
     html += `
       <div class="pkg-block">
         <strong>第 ${p.i} 件</strong><br>
+        輸入單位：${p.unit === 'cmkg' ? '公分 + 公斤' : '英寸 + 磅'}<br>
         尺寸：${p.L} × ${p.W} × ${p.H} in<br>
         最長邊：${p.longest} in｜第二長邊：${p.second} in<br>
         長度加周長：${p.longest} + 2 × ${p.second} + 2 × ${p.shortest} = ${p.lengthPlusGirth} in<br>
@@ -193,7 +238,7 @@ async function calculate(){
     <div class="pkg-block" style="border-top:2px solid #000">
       <strong>B4 運費總計</strong><br>
       合併重量：${totalLb} 磅<br>
-      續磅單價：$${续磅价}<br>
+      續磅單價：$${extraLbRate}<br>
       折扣前運費合計：$${totalBeforeDiscount.toFixed(2)}<br>
       折扣後運費合計：$${totalAfterDiscount.toFixed(2)}<br>
       取件費：$${pickup.toFixed(2)}<br>
