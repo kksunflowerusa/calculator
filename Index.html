@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>B3多件包裹運費計算機</title>
+<title>B3多件包裹運費計算機2</title>
 <style>
   body {font-family: Arial,"Noto Sans TC",sans-serif; max-width:760px; margin:30px auto; padding:20px;}
   label {display:block; margin-top:12px;}
@@ -17,14 +17,14 @@
 </style>
 </head>
 <body>
-<h2>B3 多件包裹運費計算機</h2>
+<h2>B3 多件包裹運費計算機2</h2>
 
 <label>美國收件 Zip code（5位數）</label>
 <input id="zip" type="text" maxlength="5" placeholder="例如 77084" />
 
 <label>會員折扣</label>
 <input id="discountRate" type="number" step="0.01" min="0" value="1" placeholder="例如 95折請輸入 0.95" />
-<div class="muted">折扣只套用於每磅 $4.99 國際運費；美國國內運費、TW服務費、附加費皆不折扣。</div>
+<div class="muted">會員折扣只適用於每磅 $4.99 國際運費；美國國內運費、TW服務費、附加費皆不折扣。</div>
 
 <div id="packages"></div>
 <button onclick="addPackage()">＋ 新增包裹</button>
@@ -43,6 +43,11 @@ const SERVICE_FEE_THRESHOLD = 20;
 const SERVICE_FEE = 6;
 
 function ceil(n){ return Math.ceil(Number(n)); }
+
+// 無條件進位到小數點第 2 位
+function ceilTo2(n){
+  return Math.ceil(Number(n) * 100) / 100;
+}
 
 function show(msg, isErr=false){
   const out = document.getElementById('output');
@@ -103,8 +108,10 @@ async function calcAll(){
 
   show('計算中…');
 
-  let totalBeforeDiscountUSD = 0;
-  let totalAfterDiscountUSD = 0;
+  let totalIntlBeforeDiscountUSD = 0;
+  let totalIntlAfterDiscountUSD = 0;
+  let totalUsFeeUSD = 0;
+  let totalTwFeeUSD = 0;
   let totalSurchargeUSD = 0;
   let totalLb = 0;
   let details = '';
@@ -139,7 +146,7 @@ async function calcAll(){
       const chargeWeight = Math.max(volWeight, realWeight);
 
       const intlFeeBeforeDiscount = chargeWeight * INTERNATIONAL_RATE;
-      const intlFeeAfterDiscount = intlFeeBeforeDiscount * discountRate;
+      const intlFeeAfterDiscount = ceilTo2(intlFeeBeforeDiscount * discountRate);
 
       const twFee = chargeWeight <= SERVICE_FEE_THRESHOLD ? SERVICE_FEE : 0;
 
@@ -197,14 +204,16 @@ async function calcAll(){
 
       const surchargeTotal = dimensionSurcharge + oversizeSurcharge + weightSurcharge;
 
-      const subtotalBeforeDiscountNoSurcharge = intlFeeBeforeDiscount + twFee + usFee;
-      const subtotalAfterDiscountNoSurcharge = intlFeeAfterDiscount + twFee + usFee;
+      const subtotalBeforeDiscount =
+        intlFeeBeforeDiscount + usFee + twFee + surchargeTotal;
 
-      const subtotalBeforeDiscount = subtotalBeforeDiscountNoSurcharge + surchargeTotal;
-      const subtotalAfterDiscount = subtotalAfterDiscountNoSurcharge + surchargeTotal;
+      const subtotalAfterDiscount =
+        intlFeeAfterDiscount + usFee + twFee + surchargeTotal;
 
-      totalBeforeDiscountUSD += subtotalBeforeDiscount;
-      totalAfterDiscountUSD += subtotalAfterDiscount;
+      totalIntlBeforeDiscountUSD += intlFeeBeforeDiscount;
+      totalIntlAfterDiscountUSD += intlFeeAfterDiscount;
+      totalUsFeeUSD += usFee;
+      totalTwFeeUSD += twFee;
       totalSurchargeUSD += surchargeTotal;
       totalLb += chargeWeight;
 
@@ -218,7 +227,7 @@ async function calcAll(){
 
           <b>基本費用：</b><br>
           國際運費折扣前：${chargeWeight} × $4.99 = $${intlFeeBeforeDiscount.toFixed(2)}<br>
-          國際運費折扣後：$${intlFeeBeforeDiscount.toFixed(2)} × ${discountRate} = $${intlFeeAfterDiscount.toFixed(2)}<br>
+          國際運費折扣後：$${intlFeeBeforeDiscount.toFixed(2)} × ${discountRate} = $${intlFeeAfterDiscount.toFixed(2)}，小數點第 2 位無條件進位<br>
           TW服務費：$${twFee.toFixed(2)}<br>
           美國國內運費：$${usFee.toFixed(2)}<br><br>
 
@@ -226,11 +235,17 @@ async function calcAll(){
           ${surchargeDetails}
           附加費小計：$${surchargeTotal.toFixed(2)}<br><br>
 
-          折扣前小計：$${subtotalBeforeDiscountNoSurcharge.toFixed(2)} + 附加費 $${surchargeTotal.toFixed(2)} = <b>$${subtotalBeforeDiscount.toFixed(2)}</b><br>
-          折扣後小計：$${subtotalAfterDiscountNoSurcharge.toFixed(2)} + 附加費 $${surchargeTotal.toFixed(2)} = <b>$${subtotalAfterDiscount.toFixed(2)}</b><br>
+          折扣前小計：國際運費 $${intlFeeBeforeDiscount.toFixed(2)} + 美國國內運費 $${usFee.toFixed(2)} + TW服務費 $${twFee.toFixed(2)} + 附加費 $${surchargeTotal.toFixed(2)} = <b>$${subtotalBeforeDiscount.toFixed(2)}</b><br>
+          折扣後小計：國際運費 $${intlFeeAfterDiscount.toFixed(2)} + 美國國內運費 $${usFee.toFixed(2)} + TW服務費 $${twFee.toFixed(2)} + 附加費 $${surchargeTotal.toFixed(2)} = <b>$${subtotalAfterDiscount.toFixed(2)}</b><br>
         </div>
       `;
     }
+
+    const totalBeforeDiscountUSD =
+      totalIntlBeforeDiscountUSD + totalUsFeeUSD + totalTwFeeUSD + totalSurchargeUSD;
+
+    const totalAfterDiscountUSD =
+      totalIntlAfterDiscountUSD + totalUsFeeUSD + totalTwFeeUSD + totalSurchargeUSD;
 
     let fxRate = null;
 
@@ -263,11 +278,21 @@ async function calcAll(){
       <b>📦 包裹總數：</b> ${pkgElems.length}<br>
       <b>總計磅數：</b> ${totalLb} lb<br>
       <b>會員折扣：</b> ${discountRate}<br>
-      <b>附加費總額：</b> $${totalSurchargeUSD.toFixed(2)} USD<br>
       <b>分區：</b> ${zoneSummary}<br><br>
 
-      <b>折扣前總運費：</b> $${totalBeforeDiscountUSD.toFixed(2)} USD<br>
-      <b>折扣後總運費：</b> $${totalAfterDiscountUSD.toFixed(2)} USD<br><br>
+      <b>折扣前總運費計算：</b><br>
+      國際運費總額：$${totalIntlBeforeDiscountUSD.toFixed(2)} USD<br>
+      美國國內運費總額：$${totalUsFeeUSD.toFixed(2)} USD<br>
+      TW服務費總額：$${totalTwFeeUSD.toFixed(2)} USD<br>
+      附加費總額：$${totalSurchargeUSD.toFixed(2)} USD<br>
+      折扣前總運費：$${totalIntlBeforeDiscountUSD.toFixed(2)} + $${totalUsFeeUSD.toFixed(2)} + $${totalTwFeeUSD.toFixed(2)} + $${totalSurchargeUSD.toFixed(2)} = <b>$${totalBeforeDiscountUSD.toFixed(2)} USD</b><br><br>
+
+      <b>折扣後總運費計算：</b><br>
+      國際運費總額：$${totalIntlAfterDiscountUSD.toFixed(2)} USD<br>
+      美國國內運費總額：$${totalUsFeeUSD.toFixed(2)} USD<br>
+      TW服務費總額：$${totalTwFeeUSD.toFixed(2)} USD<br>
+      附加費總額：$${totalSurchargeUSD.toFixed(2)} USD<br>
+      折扣後總運費：$${totalIntlAfterDiscountUSD.toFixed(2)} + $${totalUsFeeUSD.toFixed(2)} + $${totalTwFeeUSD.toFixed(2)} + $${totalSurchargeUSD.toFixed(2)} = <b>$${totalAfterDiscountUSD.toFixed(2)} USD</b><br><br>
 
       💱 <b>折扣前台幣總金額：</b> 約 NT$${totalBeforeDiscountTWD}<br>
       💱 <b>折扣後台幣總金額：</b> 約 NT$${totalAfterDiscountTWD}<br>
