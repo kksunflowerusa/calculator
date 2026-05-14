@@ -3,299 +3,568 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>B3多件包裹運費計算機</title>
+<title>B3多件包裹運費計算機3</title>
+
 <style>
-  body {font-family: Arial,"Noto Sans TC",sans-serif; max-width:760px; margin:30px auto; padding:20px;}
-  label {display:block; margin-top:12px;}
-  input[type="number"], input[type="text"] {width:100%; padding:8px; font-size:16px; box-sizing:border-box;}
-  button {margin-top:12px; padding:10px 18px; font-size:16px; border-radius:8px; cursor:pointer;}
-  .result {margin-top:20px; padding:16px; border-radius:8px; background:#f7f7f7;}
-  .error {color:#b00020;}
-  .pkg {border:1px solid #ccc; padding:12px; margin-top:12px; border-radius:8px; background:#fafafa;}
-  .muted {color:#666; font-size:13px;}
-  .surcharge {color:#b00020; font-weight:bold;}
+  body {
+    font-family: Arial,"Noto Sans TC",sans-serif;
+    max-width:760px;
+    margin:30px auto;
+    padding:20px;
+  }
+
+  label {
+    display:block;
+    margin-top:12px;
+  }
+
+  input[type="number"],
+  input[type="text"] {
+    width:100%;
+    padding:8px;
+    font-size:16px;
+    box-sizing:border-box;
+  }
+
+  button {
+    margin-top:12px;
+    padding:10px 18px;
+    font-size:16px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+
+  .result {
+    margin-top:20px;
+    padding:16px;
+    border-radius:8px;
+    background:#f7f7f7;
+  }
+
+  .error {
+    color:#b00020;
+  }
+
+  .pkg {
+    border:1px solid #ccc;
+    padding:12px;
+    margin-top:12px;
+    border-radius:8px;
+    background:#fafafa;
+  }
+
+  .muted {
+    color:#666;
+    font-size:13px;
+  }
+
+  .surcharge {
+    color:#b00020;
+    font-weight:bold;
+  }
 </style>
 </head>
-<body>
-<h2>B3 多件包裹運費計算機</h2>
 
-<label>美國收件 Zip code（5位數）</label>
-<input id="zip" type="text" maxlength="5" placeholder="例如 77084" />
+<body>
+
+<h2>B3 多件包裹運費計算機3</h2>
+
+<label>美國收件 Zip code（5位數）或輸入「店取」</label>
+
+<input id="zip"
+type="text"
+placeholder="例如 77084 或 店取" />
 
 <label>會員折扣</label>
-<input id="discountRate" type="number" step="0.01" min="0" value="1" placeholder="例如 95折請輸入 0.95" />
-<div class="muted">折扣只適用於每磅 $4.99 國際運費；美國國內運費、TW服務費、附加費皆不折扣。</div>
+
+<input id="discountRate"
+type="number"
+step="0.01"
+min="0"
+value="1"
+placeholder="例如 95折請輸入 0.95" />
+
+<div class="muted">
+折扣只套用於每磅 $4.99 國際運費；美國國內運費、TW服務費、附加費皆不折扣。
+</div>
 
 <div id="packages"></div>
+
 <button onclick="addPackage()">＋ 新增包裹</button>
 
 <button onclick="calcAll()">計算所有包裹總運費</button>
 
-<div class="muted">計費依磅 (lb) 計算；尺寸將自動換算成英吋並取整。</div>
+<div class="muted">
+計費依磅 (lb) 計算；尺寸將自動換算成英吋並取整。
+</div>
+
 <div id="output" class="result" style="display:none;"></div>
 
 <script>
+
 const API_URL = 'https://script.google.com/macros/s/AKfycbz8MZ8WBqekZF8JtaEthyFDmzz6KhxtzSFXM3L8nByU_wtQaQKkM3lXGiwu9jXMw8aOtw/exec';
+
 const FX_URL  = 'https://script.google.com/macros/s/AKfycbxIiNX4edi5eqyMPKnCnj0sohXVM9R2PtzRDSParjSHuLlT2eLwY8CQRJMzFVGsKWzq/exec';
 
 const INTERNATIONAL_RATE = 4.99;
 const SERVICE_FEE_THRESHOLD = 20;
 const SERVICE_FEE = 6;
 
-function ceil(n){ return Math.ceil(Number(n)); }
+function ceil(n){
+  return Math.ceil(Number(n));
+}
 
 function ceilTo2(n){
   return Math.ceil(Number(n) * 100) / 100;
 }
 
-function show(msg, isErr=false){
+function show(msg,isErr=false){
+
   const out = document.getElementById('output');
+
   out.style.display='block';
-  out.className = 'result' + (isErr?' error':'');
-  out.innerHTML = msg;
+
+  out.className='result'+(isErr?' error':'');
+
+  out.innerHTML=msg;
 }
 
 let pkgCount = 0;
 
 function addPackage(){
+
   pkgCount++;
+
   const div = document.createElement('div');
-  div.className = 'pkg';
-  div.id = `pkg${pkgCount}`;
-  div.innerHTML = `
+
+  div.className='pkg';
+
+  div.id=`pkg${pkgCount}`;
+
+  div.innerHTML=`
     <h4>包裹 #${pkgCount}</h4>
 
     <label>長度（公分）</label>
-    <input type="number" step="0.1" min="0.1" id="len${pkgCount}" placeholder="例如 40">
+    <input type="number" step="0.1" min="0.1" id="len${pkgCount}">
 
     <label>寬度（公分）</label>
-    <input type="number" step="0.1" min="0.1" id="wid${pkgCount}" placeholder="例如 30">
+    <input type="number" step="0.1" min="0.1" id="wid${pkgCount}">
 
     <label>高度（公分）</label>
-    <input type="number" step="0.1" min="0.1" id="hei${pkgCount}" placeholder="例如 20">
+    <input type="number" step="0.1" min="0.1" id="hei${pkgCount}">
 
     <label>重量（公斤）</label>
-    <input type="number" step="0.1" min="0.1" id="kg${pkgCount}" placeholder="例如 5">
+    <input type="number" step="0.1" min="0.1" id="kg${pkgCount}">
 
-    <button onclick="removePackage(${pkgCount})" style="background:#eee; margin-top:8px;">刪除此包裹</button>
+    <button onclick="removePackage(${pkgCount})"
+    style="background:#eee;margin-top:8px;">
+      刪除此包裹
+    </button>
   `;
+
   document.getElementById('packages').appendChild(div);
 }
 
 function removePackage(id){
-  const el = document.getElementById(`pkg${id}`);
+
+  const el=document.getElementById(`pkg${id}`);
+
   if(el) el.remove();
 }
 
 addPackage();
 
 async function calcAll(){
-  const zip = document.getElementById('zip').value.trim();
-  if(!zip || zip.replace(/\D/g,'').length !== 5){
-    show('請輸入 5 位數 Zip code。', true);
-    return;
+
+  const zip=document.getElementById('zip').value.trim();
+
+  const lowerZip=zip.toLowerCase();
+
+  const isPickup=
+    zip==='店取' ||
+    zip==='自取' ||
+    lowerZip==='pickup' ||
+    lowerZip==='pick up';
+
+  if(!isPickup){
+
+    if(!zip || zip.replace(/\D/g,'').length!==5){
+
+      show('請輸入 5 位數 Zip code 或輸入 店取',true);
+
+      return;
+    }
   }
 
-  const discountInput = Number(document.getElementById('discountRate').value);
-  const discountRate = (!isNaN(discountInput) && discountInput > 0) ? discountInput : 1;
+  const discountInput=Number(document.getElementById('discountRate').value);
 
-  const pkgElems = document.querySelectorAll('.pkg');
-  if(pkgElems.length === 0){
-    show('請至少新增一個包裹。', true);
+  const discountRate=
+    (!isNaN(discountInput) && discountInput>0)
+    ? discountInput
+    : 1;
+
+  const pkgElems=document.querySelectorAll('.pkg');
+
+  if(pkgElems.length===0){
+
+    show('請至少新增一個包裹。',true);
+
     return;
   }
 
   show('計算中…');
 
-  let totalLb = 0;
-  let totalUsFeeUSD = 0;
-  let totalTwFeeUSD = 0;
-  let totalSurchargeUSD = 0;
-  let details = '';
-  let zoneSummary = null;
+  let totalLb=0;
+  let totalUsFeeUSD=0;
+  let totalTwFeeUSD=0;
+  let totalSurchargeUSD=0;
+  let details='';
+  let zoneSummary=isPickup ? '店取' : null;
 
   try {
-    for(let i = 0; i < pkgElems.length; i++){
-      const id = pkgElems[i].id.replace('pkg','');
 
-      const len = Number(document.getElementById('len' + id).value);
-      const wid = Number(document.getElementById('wid' + id).value);
-      const hei = Number(document.getElementById('hei' + id).value);
-      const kg  = Number(document.getElementById('kg' + id).value);
+    for(let i=0;i<pkgElems.length;i++){
 
-      if([len, wid, hei, kg].some(v => !v || v <= 0)){
-        show(`包裹 #${id} 的長寬高或重量輸入錯誤。`, true);
+      const id=pkgElems[i].id.replace('pkg','');
+
+      const len=Number(document.getElementById('len'+id).value);
+      const wid=Number(document.getElementById('wid'+id).value);
+      const hei=Number(document.getElementById('hei'+id).value);
+      const kg=Number(document.getElementById('kg'+id).value);
+
+      if([len,wid,hei,kg].some(v=>!v || v<=0)){
+
+        show(`包裹 #${id} 的長寬高或重量輸入錯誤。`,true);
+
         return;
       }
 
-      const lIn = ceil(len / 2.54);
-      const wIn = ceil(wid / 2.54);
-      const hIn = ceil(hei / 2.54);
+      const lIn=ceil(len/2.54);
+      const wIn=ceil(wid/2.54);
+      const hIn=ceil(hei/2.54);
 
-      const sides = [lIn, wIn, hIn].sort((a, b) => b - a);
-      const longestSide = sides[0];
-      const secondLongestSide = sides[1];
-      const shortestSide = sides[2];
-      const lengthPlusGirth = longestSide + 2 * secondLongestSide + 2 * shortestSide;
+      const sides=[lIn,wIn,hIn].sort((a,b)=>b-a);
 
-      const volWeight = ceil((lIn * wIn * hIn) / 139);
-      const realWeight = ceil(kg / 0.454);
-      const chargeWeight = Math.max(volWeight, realWeight);
+      const longestSide=sides[0];
+      const secondLongestSide=sides[1];
+      const shortestSide=sides[2];
 
-      const twFee = chargeWeight <= SERVICE_FEE_THRESHOLD ? SERVICE_FEE : 0;
+      const lengthPlusGirth=
+        longestSide + 2*secondLongestSide + 2*shortestSide;
 
-      const resp = await fetch(`${API_URL}?zip=${encodeURIComponent(zip)}&weight=${chargeWeight}`);
-      const json = await resp.json();
+      const volWeight=ceil((lIn*wIn*hIn)/139);
 
-      if(!json.success){
-        show('國內運費錯誤：' + json.message, true);
-        return;
+      const realWeight=ceil(kg/0.454);
+
+      const chargeWeight=Math.max(volWeight,realWeight);
+
+      const twFee=
+        chargeWeight<=SERVICE_FEE_THRESHOLD
+        ? SERVICE_FEE
+        : 0;
+
+      let usFee=0;
+
+      if(!isPickup){
+
+        const resp=await fetch(
+          `${API_URL}?zip=${encodeURIComponent(zip)}&weight=${chargeWeight}`
+        );
+
+        const json=await resp.json();
+
+        if(!json.success){
+
+          show('國內運費錯誤：'+json.message,true);
+
+          return;
+        }
+
+        usFee=parseFloat(
+          String(json.rate).replace(/[^\d.]/g,'')
+        ) || 0;
+
+        const zone=json.zone || '未知分區';
+
+        if(!zoneSummary) zoneSummary=zone;
       }
 
-      const usFee = parseFloat(String(json.rate).replace(/[^\d.]/g,'')) || 0;
-      const zone = json.zone || '未知分區';
-      if(!zoneSummary) zoneSummary = zone;
+      let dimensionSurcharge=0;
+      let oversizeSurcharge=0;
+      let weightSurcharge=0;
 
-      let dimensionSurcharge = 0;
-      let oversizeSurcharge = 0;
-      let weightSurcharge = 0;
-      let surchargeDetails = '';
+      let surchargeDetails='';
 
       if(
-        longestSide > 46 ||
-        secondLongestSide > 28 ||
-        lengthPlusGirth > 100
+        longestSide>46 ||
+        secondLongestSide>28 ||
+        lengthPlusGirth>100
       ){
-        dimensionSurcharge = 35;
-        surchargeDetails += `
-          <span class="surcharge">額外服務附加費 – 尺寸：$35</span><br>
-          條件檢查：最長邊 ${longestSide} in、第二長邊 ${secondLongestSide} in、長度加周長 ${lengthPlusGirth} in<br>
+
+        dimensionSurcharge=35;
+
+        surchargeDetails+=`
+          <span class="surcharge">
+          額外服務附加費 – 尺寸：$35
+          </span><br>
         `;
       }
 
       if(
-        longestSide > 90 ||
-        lengthPlusGirth > 120
+        longestSide>90 ||
+        lengthPlusGirth>120
       ){
-        oversizeSurcharge = 85;
-        surchargeDetails += `
-          <span class="surcharge">超大尺寸費用：$85</span><br>
-          條件檢查：最長邊 ${longestSide} in、長度加周長 ${lengthPlusGirth} in<br>
+
+        oversizeSurcharge=85;
+
+        surchargeDetails+=`
+          <span class="surcharge">
+          超大尺寸費用：$85
+          </span><br>
         `;
       }
 
-      if(chargeWeight >= 50){
-        weightSurcharge = 35;
-        surchargeDetails += `
-          <span class="surcharge">額外服務附加費 – 重量：$35</span><br>
-          條件檢查：材積重 ${volWeight} lb、實際重 ${realWeight} lb、計費重量 ${chargeWeight} lb<br>
+      if(chargeWeight>=50){
+
+        weightSurcharge=35;
+
+        surchargeDetails+=`
+          <span class="surcharge">
+          額外服務附加費 – 重量：$35
+          </span><br>
         `;
       }
 
       if(!surchargeDetails){
-        surchargeDetails = '無附加費<br>';
+
+        surchargeDetails='無附加費<br>';
       }
 
-      const surchargeTotal = dimensionSurcharge + oversizeSurcharge + weightSurcharge;
-      const packageNonIntlTotal = usFee + twFee + surchargeTotal;
+      const surchargeTotal=
+        dimensionSurcharge +
+        oversizeSurcharge +
+        weightSurcharge;
 
-      totalLb += chargeWeight;
-      totalUsFeeUSD += usFee;
-      totalTwFeeUSD += twFee;
-      totalSurchargeUSD += surchargeTotal;
+      const packageNonIntlTotal=
+        usFee +
+        twFee +
+        surchargeTotal;
 
-      details += `
+      totalLb+=chargeWeight;
+      totalUsFeeUSD+=usFee;
+      totalTwFeeUSD+=twFee;
+      totalSurchargeUSD+=surchargeTotal;
+
+      details+=`
         <div style="margin-bottom:16px;">
+
           <b>包裹 #${id}</b><br>
-          換算尺寸：${lIn} × ${wIn} × ${hIn} in<br>
-          最長邊：${longestSide} in｜第二長邊：${secondLongestSide} in<br>
-          長度加周長：${longestSide} + 2 × ${secondLongestSide} + 2 × ${shortestSide} = ${lengthPlusGirth} in<br>
-          材積重：${volWeight} lb｜實際重：${realWeight} lb｜計費：${chargeWeight} lb<br><br>
+
+          換算尺寸：
+          ${lIn} × ${wIn} × ${hIn} in<br>
+
+          最長邊：
+          ${longestSide} in｜第二長邊：
+          ${secondLongestSide} in<br>
+
+          長度加周長：
+          ${lengthPlusGirth} in<br>
+
+          材積重：
+          ${volWeight} lb｜
+          實際重：
+          ${realWeight} lb｜
+          計費：
+          ${chargeWeight} lb<br><br>
 
           <b>此包裹個別費用：</b><br>
-          TW服務費：$${twFee.toFixed(2)}<br>
-          美國國內運費：$${usFee.toFixed(2)}<br><br>
+
+          TW服務費：
+          $${twFee.toFixed(2)}<br>
+
+          美國國內運費：
+          $${usFee.toFixed(2)}<br><br>
 
           <b>附加費：</b><br>
-          ${surchargeDetails}
-          附加費小計：$${surchargeTotal.toFixed(2)}<br><br>
 
-          此包裹不含國際運費小計：美國國內運費 $${usFee.toFixed(2)} + TW服務費 $${twFee.toFixed(2)} + 附加費 $${surchargeTotal.toFixed(2)} = <b>$${packageNonIntlTotal.toFixed(2)}</b><br>
+          ${surchargeDetails}
+
+          附加費小計：
+          $${surchargeTotal.toFixed(2)}<br><br>
+
+          此包裹不含國際運費小計：
+          <b>$${packageNonIntlTotal.toFixed(2)}</b><br>
+
         </div>
       `;
     }
 
-    const totalIntlBeforeDiscountUSD = ceilTo2(totalLb * INTERNATIONAL_RATE);
-    const totalIntlAfterDiscountUSD = ceilTo2(totalIntlBeforeDiscountUSD * discountRate);
+    const totalIntlBeforeDiscountUSD=
+      ceilTo2(totalLb * INTERNATIONAL_RATE);
 
-    const totalBeforeDiscountUSD =
-      totalIntlBeforeDiscountUSD + totalUsFeeUSD + totalTwFeeUSD + totalSurchargeUSD;
+    const totalIntlAfterDiscountUSD=
+      ceilTo2(totalIntlBeforeDiscountUSD * discountRate);
 
-    const totalAfterDiscountUSD =
-      totalIntlAfterDiscountUSD + totalUsFeeUSD + totalTwFeeUSD + totalSurchargeUSD;
+    const totalBeforeDiscountUSD=
+      totalIntlBeforeDiscountUSD +
+      totalUsFeeUSD +
+      totalTwFeeUSD +
+      totalSurchargeUSD;
 
-    let fxRate = null;
+    const totalAfterDiscountUSD=
+      totalIntlAfterDiscountUSD +
+      totalUsFeeUSD +
+      totalTwFeeUSD +
+      totalSurchargeUSD;
+
+    let fxRate=null;
 
     try{
-      const fxResp = await fetch(FX_URL);
-      const fxJson = await fxResp.json();
-      const keys = ['rate','Rate','usdToTwd','USDTWD','twd','TWD','usdClose'];
+
+      const fxResp=await fetch(FX_URL);
+
+      const fxJson=await fxResp.json();
+
+      const keys=[
+        'rate',
+        'Rate',
+        'usdToTwd',
+        'USDTWD',
+        'twd',
+        'TWD',
+        'usdClose'
+      ];
 
       for(const k of keys){
-        if(fxJson[k] !== undefined){
-          fxRate = parseFloat(fxJson[k]);
+
+        if(fxJson[k]!==undefined){
+
+          fxRate=parseFloat(fxJson[k]);
+
           if(!isNaN(fxRate)) break;
         }
       }
+
     }catch(e){
-      console.warn('抓匯率失敗', e);
+
+      console.warn('抓匯率失敗',e);
     }
 
-    const finalRate = fxRate ? (fxRate + 0.8) : null;
-    const totalBeforeDiscountTWD = finalRate ? Math.ceil(totalBeforeDiscountUSD * finalRate) : 'N/A';
-    const totalAfterDiscountTWD = finalRate ? Math.ceil(totalAfterDiscountUSD * finalRate) : 'N/A';
-    const rateDisplay = finalRate ? finalRate.toFixed(3) : 'N/A';
-    const today = new Date().toLocaleDateString('zh-TW');
+    const finalRate=
+      fxRate
+      ? (fxRate + 0.8)
+      : null;
+
+    const totalBeforeDiscountTWD=
+      finalRate
+      ? Math.ceil(totalBeforeDiscountUSD * finalRate)
+      : 'N/A';
+
+    const totalAfterDiscountTWD=
+      finalRate
+      ? Math.ceil(totalAfterDiscountUSD * finalRate)
+      : 'N/A';
+
+    const rateDisplay=
+      finalRate
+      ? finalRate.toFixed(3)
+      : 'N/A';
+
+    const today=
+      new Date().toLocaleDateString('zh-TW');
 
     show(`
+
       <strong>B3 運費總報價</strong><br/>
+
       ──────────────<br/>
+
       ${details}
+
       <hr>
 
       <b>國際運費統一計算：</b><br>
-      所有包裹總計費磅數：${totalLb} lb<br>
-      國際運費折扣前：${totalLb} × $4.99 = <b>$${totalIntlBeforeDiscountUSD.toFixed(2)} USD</b><br>
-      國際運費折扣後：$${totalIntlBeforeDiscountUSD.toFixed(2)} × ${discountRate} = <b>$${totalIntlAfterDiscountUSD.toFixed(2)} USD</b><br>
+
+      所有包裹總計費磅數：
+      ${totalLb} lb<br>
+
+      國際運費折扣前：
+      ${totalLb} × $4.99 =
+      <b>$${totalIntlBeforeDiscountUSD.toFixed(2)} USD</b><br>
+
+      國際運費折扣後：
+      $${totalIntlBeforeDiscountUSD.toFixed(2)}
+      × ${discountRate} =
+      <b>$${totalIntlAfterDiscountUSD.toFixed(2)} USD</b><br>
 
       <hr>
-      <b>📦 包裹總數：</b> ${pkgElems.length}<br>
-      <b>總計磅數：</b> ${totalLb} lb<br>
-      <b>會員折扣：</b> ${discountRate}<br>
-      <b>分區：</b> ${zoneSummary}<br><br>
 
-      <b>折扣前總運費計算：</b><br>
-      國際運費總額：$${totalIntlBeforeDiscountUSD.toFixed(2)} USD<br>
-      美國國內運費總額：$${totalUsFeeUSD.toFixed(2)} USD<br>
-      TW服務費總額：$${totalTwFeeUSD.toFixed(2)} USD<br>
-      附加費總額：$${totalSurchargeUSD.toFixed(2)} USD<br>
-      折扣前總運費：$${totalIntlBeforeDiscountUSD.toFixed(2)} + $${totalUsFeeUSD.toFixed(2)} + $${totalTwFeeUSD.toFixed(2)} + $${totalSurchargeUSD.toFixed(2)} = <b>$${totalBeforeDiscountUSD.toFixed(2)} USD</b><br><br>
+      <b>📦 包裹總數：</b>
+      ${pkgElems.length}<br>
 
-      <b>折扣後總運費計算：</b><br>
-      國際運費總額：$${totalIntlAfterDiscountUSD.toFixed(2)} USD<br>
-      美國國內運費總額：$${totalUsFeeUSD.toFixed(2)} USD<br>
-      TW服務費總額：$${totalTwFeeUSD.toFixed(2)} USD<br>
-      附加費總額：$${totalSurchargeUSD.toFixed(2)} USD<br>
-      折扣後總運費：$${totalIntlAfterDiscountUSD.toFixed(2)} + $${totalUsFeeUSD.toFixed(2)} + $${totalTwFeeUSD.toFixed(2)} + $${totalSurchargeUSD.toFixed(2)} = <b>$${totalAfterDiscountUSD.toFixed(2)} USD</b><br><br>
+      <b>總計磅數：</b>
+      ${totalLb} lb<br>
 
-      💱 <b>折扣前台幣總金額：</b> 約 NT$${totalBeforeDiscountTWD}<br>
-      💱 <b>折扣後台幣總金額：</b> 約 NT$${totalAfterDiscountTWD}<br>
-      使用匯率：1 USD = NT$${rateDisplay}<br>
-      今日日期：${today}<br>
+      <b>會員折扣：</b>
+      ${discountRate}<br>
+
+      <b>配送方式 / 分區：</b>
+      ${zoneSummary}<br><br>
+
+      <b>折扣前總運費：</b><br>
+
+      國際運費：
+      $${totalIntlBeforeDiscountUSD.toFixed(2)}<br>
+
+      美國國內運費：
+      $${totalUsFeeUSD.toFixed(2)}<br>
+
+      TW服務費：
+      $${totalTwFeeUSD.toFixed(2)}<br>
+
+      附加費：
+      $${totalSurchargeUSD.toFixed(2)}<br>
+
+      <b>
+      總計：
+      $${totalBeforeDiscountUSD.toFixed(2)} USD
+      </b><br><br>
+
+      <b>折扣後總運費：</b><br>
+
+      國際運費：
+      $${totalIntlAfterDiscountUSD.toFixed(2)}<br>
+
+      美國國內運費：
+      $${totalUsFeeUSD.toFixed(2)}<br>
+
+      TW服務費：
+      $${totalTwFeeUSD.toFixed(2)}<br>
+
+      附加費：
+      $${totalSurchargeUSD.toFixed(2)}<br>
+
+      <b>
+      總計：
+      $${totalAfterDiscountUSD.toFixed(2)} USD
+      </b><br><br>
+
+      💱 <b>折扣前台幣總金額：</b>
+      約 NT$${totalBeforeDiscountTWD}<br>
+
+      💱 <b>折扣後台幣總金額：</b>
+      約 NT$${totalAfterDiscountTWD}<br>
+
+      使用匯率：
+      1 USD = NT$${rateDisplay}<br>
+
+      今日日期：
+      ${today}<br>
     `);
 
   } catch(err){
-    show('發生錯誤：' + err, true);
+
+    show('發生錯誤：'+err,true);
   }
 }
 </script>
